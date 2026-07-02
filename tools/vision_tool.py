@@ -14,6 +14,7 @@ _CAPTION_PROMPT = (
     "Describe this image in detail. Focus on any community infrastructure issues, "
     "damage, or problems visible. Be specific about location features."
 )
+_MODEL_NAME = "gemini-1.5-flash"
 
 
 class VisionTool:
@@ -29,7 +30,7 @@ class VisionTool:
         self,
         project_id: str,
         location: str = "us-central1",
-        model_name: str = "gemini-1.5-flash",
+        model_name: str = _MODEL_NAME,
     ) -> None:
         self._project_id = project_id
         self._location = location

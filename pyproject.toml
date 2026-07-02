@@ -24,7 +24,9 @@ dependencies = [
     "google-cloud-pubsub",
     "google-cloud-storage",
     "httpx",
-    "pypdf"
+    "pypdf",
+    "python-multipart",
+    "google-generativeai"
 ]
 [project.optional-dependencies]
 dev = [
