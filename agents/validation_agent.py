@@ -1,32 +1,16 @@
 """
 agents/validation_agent.py — Validation Agent for the Sampark AI Platform.
 
-Scores the credibility of a citizen-reported issue by combining four
-evidence signals into a ``confidence_score``.
-
-External dependencies (FirestoreTool, MapsTool, WeatherTool) are injected
-via ``make_validation_node`` so that unit tests can supply mocks without
-real API calls.
+Scores issue credibility, detects duplicates, and verifies location.
 
 Logic (per design.md §4.2):
-1. Geo-query Firestore for open issues within 500 m with the same type.
-2. Call ``MapsTool.geocode(address)`` to verify the address is within the
-   configured municipal boundary.
-3. Call ``WeatherTool.get_current_and_forecast(lat, lng)`` for corroborating
-   weather context.
-4. Compute ``confidence_score``:
-   - +0.3 if ≥1 corroborating complaint found (duplicate check)
-   - +0.3 if location verified by Maps
-   - +0.2 if weather corroborates the issue type
-   - +0.2 if image/audio evidence is present (non-empty ``issue.media_refs``)
-5. Set ``validation.status`` to ``"low_confidence"`` if score < 0.4,
-   else ``"valid"``.
+1. Geo-query Firestore for open issues within 500m with same issue.type.
+2. Call MapsTool.geocode() to verify address within boundary.
+3. Call WeatherTool for corroborating evidence.
+4. Compute confidence_score from 4 boolean components.
+5. Set validation.status based on threshold.
 
-SLA: ≤8 seconds enforced with ``asyncio.timeout``.
-
-Edge cases:
-- ``state["issue"]`` is None or has no location → low_confidence, score 0.0.
-- Any individual tool call failing → treat that evidence component as False.
+SLA: ≤8 seconds (asyncio.timeout).
 """
 
 from __future__ import annotations
@@ -39,107 +23,46 @@ from agents.state import GraphState, ValidationResult
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
 _SLA_SECONDS = 8
 
-# Issue types for which rain/flooding weather is considered corroborating.
-_WEATHER_CORROBORATED_TYPES: frozenset[str] = frozenset({"flood", "road", "sanitation"})
-
-_SCORE_DUPLICATE: float = 0.3
-_SCORE_LOCATION: float = 0.3
-_SCORE_WEATHER: float = 0.2
-_SCORE_MEDIA: float = 0.2
-
-_THRESHOLD_LOW_CONFIDENCE: float = 0.4
+# Issue types where rainfall increases confidence
+_WEATHER_CORROBORATE_TYPES = {"flood", "road", "sanitation"}
 
 
-# ---------------------------------------------------------------------------
-# Weather corroboration helper
-# ---------------------------------------------------------------------------
-
-
-def _weather_corroborates(issue_type: str, weather: dict[str, Any]) -> bool:
-    """Return True when the weather context supports the given issue type.
-
-    For issue types in ``_WEATHER_CORROBORATED_TYPES`` (flood, road,
-    sanitation), rain is considered corroborating evidence when:
-    - ``rainfall_forecast_48h > 0``, OR
-    - The current weather description contains the word "rain".
-
-    For all other issue types, always returns False.
-
-    Args:
-        issue_type: The canonical issue type string.
-        weather:    Dict returned by ``WeatherTool.get_current_and_forecast``.
-
-    Returns:
-        True if the weather corroborates the issue, False otherwise.
-    """
-    if issue_type not in _WEATHER_CORROBORATED_TYPES:
+def _weather_corroborates(issue_type: str, weather: dict | None) -> bool:
+    """Return True if weather data supports the given issue type."""
+    if weather is None or issue_type not in _WEATHER_CORROBORATE_TYPES:
         return False
-
-    # Check 48-hour rainfall forecast
-    if weather.get("rainfall_forecast_48h", 0) > 0:
-        return True
-
-    # Check current weather description for "rain"
     current = weather.get("current") or {}
-    description: str = current.get("weather_description") or ""
-    if "rain" in description.lower():
-        return True
-
-    return False
+    desc = (current.get("weather_description") or "").lower()
+    rain_48h = weather.get("rainfall_forecast_48h", 0.0) or 0.0
+    return rain_48h > 0 or "rain" in desc or "drizzle" in desc or "storm" in desc
 
 
-# ---------------------------------------------------------------------------
-# Confidence score computation
-# ---------------------------------------------------------------------------
-
-
-def compute_confidence_score(
-    duplicate: bool,
+def _compute_confidence(
+    has_duplicate: bool,
     location_verified: bool,
     weather_corroborated: bool,
     has_media: bool,
 ) -> float:
-    """Compute a composite credibility score in [0.0, 1.0].
+    """Compute confidence score from 4 boolean evidence components.
 
-    Scoring components:
-    - +0.3 if at least one corroborating complaint was found nearby.
-    - +0.3 if the location was verified by the Maps geocoding service.
-    - +0.2 if the current/forecast weather corroborates the issue type.
-    - +0.2 if image or audio evidence is attached (``media_refs`` non-empty).
-
-    The returned value is always clamped to [0.0, 1.0].
-
-    Args:
-        duplicate:            True if ≥1 nearby issue of the same type was found.
-        location_verified:    True if geocoding confirmed the address.
-        weather_corroborated: True if weather context supports the issue type.
-        has_media:            True if ``issue.media_refs`` is non-empty.
-
-    Returns:
-        Float in [0.0, 1.0].
+    Weights:
+        duplicate complaint: +0.3
+        location verified:   +0.3
+        weather corroboration: +0.2
+        media evidence:      +0.2
     """
     score = 0.0
-    if duplicate:
-        score += _SCORE_DUPLICATE
+    if has_duplicate:
+        score += 0.3
     if location_verified:
-        score += _SCORE_LOCATION
+        score += 0.3
     if weather_corroborated:
-        score += _SCORE_WEATHER
+        score += 0.2
     if has_media:
-        score += _SCORE_MEDIA
-    # Clamp to [0.0, 1.0] as a safety measure
-    return max(0.0, min(1.0, score))
-
-
-# ---------------------------------------------------------------------------
-# Public factory
-# ---------------------------------------------------------------------------
+        score += 0.2
+    return round(min(max(score, 0.0), 1.0), 2)
 
 
 def make_validation_node(
@@ -147,142 +70,106 @@ def make_validation_node(
     maps_tool: Any,
     weather_tool: Any,
 ) -> Callable[[GraphState], Coroutine[Any, Any, GraphState]]:
-    """Return an async ``validation_node`` function with injected dependencies.
+    """Return an async validation_node with injected dependencies.
 
     Args:
-        firestore_tool: Instance of ``FirestoreTool`` (or compatible mock).
-                        Must expose ``async geo_radius_query(collection, lat,
-                        lng, radius_meters, filters) -> list[dict]``.
-        maps_tool:      Instance of ``MapsTool`` (or compatible mock).
-                        Must expose ``async geocode(location_str) -> dict | None``.
-        weather_tool:   Instance of ``WeatherTool`` (or compatible mock).
-                        Must expose ``async get_current_and_forecast(lat, lng)
-                        -> dict``.
-
-    Returns:
-        An async callable ``validation_node(state) -> state`` suitable for
-        LangGraph node registration.
+        firestore_tool: FirestoreTool instance.
+        maps_tool:      MapsTool instance.
+        weather_tool:   WeatherTool instance.
     """
 
-    async def validation_node(state: GraphState) -> GraphState:  # noqa: C901
-        """LangGraph node: score issue credibility and populate ValidationResult."""
-
+    async def validation_node(state: GraphState) -> GraphState:
+        """Score issue credibility and write ValidationResult to state."""
         issue = state.get("issue")
 
-        # ------------------------------------------------------------------
-        # Edge case: no issue or no location → low_confidence with zero score
-        # ------------------------------------------------------------------
+        # Edge case: no issue or no location
         if issue is None or issue.get("location") is None:
-            logger.warning("validation_node: issue or location is None; setting low_confidence")
             state["validation"] = ValidationResult(
                 duplicate=False,
                 confidence_score=0.0,
                 status="low_confidence",
                 location_verified=False,
-                failure_reason="issue or location is missing",
+                failure_reason="missing_issue_or_location",
             )
             return state
 
-        location: dict = issue["location"]
-        issue_type: str = issue.get("type", "other")
-        lat: float | None = location.get("lat")
-        lng: float | None = location.get("lng")
-        address: str | None = location.get("address")
-        media_refs: list[str] = issue.get("media_refs") or []
-
-        # ------------------------------------------------------------------
-        # Evidence signals (collected within the 8-second SLA)
-        # ------------------------------------------------------------------
-        duplicate = False
-        location_verified = False
-        weather_corroborated = False
-        has_media = bool(media_refs)
+        location = issue["location"]
+        issue_type = issue.get("type", "other")
+        lat = location.get("lat")
+        lng = location.get("lng")
+        address = location.get("address", "")
 
         try:
             async with asyncio.timeout(_SLA_SECONDS):
-
-                # ---- 1. Duplicate / corroborating complaint check --------
-                if lat is not None and lng is not None:
-                    try:
-                        nearby_issues = await firestore_tool.geo_radius_query(
-                            "issues",
+                # ---- 1. Duplicate detection (Firestore geo-radius) --------
+                has_duplicate = False
+                try:
+                    if lat is not None and lng is not None:
+                        nearby = await firestore_tool.geo_radius_query(
+                            collection="issues",
                             lat=lat,
                             lng=lng,
                             radius_meters=500,
                             filters={"type": issue_type, "status": "open"},
                         )
-                        duplicate = len(nearby_issues) >= 1
-                    except Exception:
-                        logger.exception(
-                            "validation_node: Firestore geo_radius_query failed; "
-                            "treating duplicate as False"
-                        )
+                        has_duplicate = len(nearby) > 0
+                except Exception:
+                    logger.warning("Duplicate detection failed — treating as no duplicate")
 
-                # ---- 2. Location verification via Maps geocoding ----------
-                location_str: str | None = address
-                if not location_str and lat is not None and lng is not None:
-                    location_str = f"{lat},{lng}"
-
-                if location_str:
-                    try:
-                        geocode_result = await maps_tool.geocode(location_str)
-                        location_verified = geocode_result is not None
-                    except Exception:
-                        logger.exception(
-                            "validation_node: MapsTool.geocode failed; "
-                            "treating location_verified as False"
-                        )
+                # ---- 2. Location verification (Maps geocoding) ------------
+                location_verified = False
+                failure_reason: str | None = None
+                try:
+                    geocoded = await maps_tool.geocode(address or f"{lat},{lng}")
+                    if geocoded is not None:
+                        location_verified = True
+                        # Enrich location with geocoded coordinates if missing
+                        if lat is None:
+                            issue["location"]["lat"] = geocoded["lat"]
+                            issue["location"]["lng"] = geocoded["lng"]
+                            state["issue"] = issue
+                    else:
+                        failure_reason = "geocode_no_result"
+                except Exception:
+                    logger.warning("Location verification failed")
+                    failure_reason = "geocode_error"
 
                 # ---- 3. Weather corroboration ----------------------------
-                if lat is not None and lng is not None:
-                    try:
+                weather_corroborated = False
+                try:
+                    if lat is not None and lng is not None:
                         weather = await weather_tool.get_current_and_forecast(lat, lng)
                         weather_corroborated = _weather_corroborates(issue_type, weather)
-                    except Exception:
-                        logger.exception(
-                            "validation_node: WeatherTool call failed; "
-                            "treating weather_corroborated as False"
-                        )
+                except Exception:
+                    logger.warning("Weather corroboration failed")
+
+                # ---- 4. Media evidence -----------------------------------
+                has_media = bool(issue.get("media_refs"))
+
+                # ---- 5. Confidence score & status -----------------------
+                score = _compute_confidence(
+                    has_duplicate, location_verified, weather_corroborated, has_media
+                )
+                status = "valid" if score >= 0.4 else "low_confidence"
 
         except TimeoutError:
-            logger.warning(
-                "validation_node: 8-second SLA exceeded; proceeding with partial evidence"
+            logger.warning("validation_node SLA exceeded (%ds)", _SLA_SECONDS)
+            state["validation"] = ValidationResult(
+                duplicate=False,
+                confidence_score=0.0,
+                status="low_confidence",
+                location_verified=False,
+                failure_reason="timeout",
             )
-
-        # ------------------------------------------------------------------
-        # 4. Compute confidence score
-        # ------------------------------------------------------------------
-        confidence_score = compute_confidence_score(
-            duplicate=duplicate,
-            location_verified=location_verified,
-            weather_corroborated=weather_corroborated,
-            has_media=has_media,
-        )
-
-        # ------------------------------------------------------------------
-        # 5. Determine validation status
-        # ------------------------------------------------------------------
-        status = "valid" if confidence_score >= _THRESHOLD_LOW_CONFIDENCE else "low_confidence"
+            return state
 
         state["validation"] = ValidationResult(
-            duplicate=duplicate,
-            confidence_score=confidence_score,
+            duplicate=has_duplicate,
+            confidence_score=score,
             status=status,
             location_verified=location_verified,
-            failure_reason=None,
+            failure_reason=failure_reason,
         )
-
-        logger.info(
-            "validation_node complete: duplicate=%s location_verified=%s "
-            "weather=%s media=%s score=%.2f status=%s",
-            duplicate,
-            location_verified,
-            weather_corroborated,
-            has_media,
-            confidence_score,
-            status,
-        )
-
         return state
 
     return validation_node

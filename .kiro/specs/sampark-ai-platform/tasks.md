@@ -75,150 +75,150 @@ Implementation of the Sampark AI Decision Intelligence Platform — a multi-agen
   - [x] 4.9 Write unit tests for each input modality path including all error flag cases
   - [x] 4.10 Write property-based test: for any text input, `issue.type` always belongs to the 8 canonical categories
 
-- [ ] 5. Validation Agent
+- [x] 5. Validation Agent
   Implement credibility scoring, duplicate detection, and location verification.
-  - [ ] 5.1 Implement `agents/validation_agent.py` with `validation_node(state: GraphState) -> GraphState`
-  - [~] 5.2 Implement Firestore geo-radius query for duplicate detection within 500m with same `issue.type`; set `validation.duplicate`
-  - [~] 5.3 Implement Maps Tool geocoding call to verify address within configured boundary; set `validation.location_verified`
-  - [~] 5.4 Implement Weather Tool call for corroborating evidence
-  - [~] 5.5 Implement `confidence_score` computation using the 4-component scoring formula (complaints +0.3, maps +0.3, weather +0.2, media +0.2)
-  - [~] 5.6 Set `validation.status` to `"low_confidence"` if score < 0.4, else `"valid"`
-  - [~] 5.7 Enforce 8-second total SLA using `asyncio.timeout`
-  - [~] 5.8 Write unit tests covering: duplicate found, location invalid, low confidence, valid paths
-  - [~] 5.9 Write property-based test: `confidence_score` always ∈ [0.0, 1.0] for any combination of boolean evidence flags
+  - [x] 5.1 Implement `agents/validation_agent.py` with `validation_node(state: GraphState) -> GraphState`
+  - [x] 5.2 Implement Firestore geo-radius query for duplicate detection within 500m with same `issue.type`; set `validation.duplicate`
+  - [x] 5.3 Implement Maps Tool geocoding call to verify address within configured boundary; set `validation.location_verified`
+  - [x] 5.4 Implement Weather Tool call for corroborating evidence
+  - [x] 5.5 Implement `confidence_score` computation using the 4-component scoring formula (complaints +0.3, maps +0.3, weather +0.2, media +0.2)
+  - [x] 5.6 Set `validation.status` to `"low_confidence"` if score < 0.4, else `"valid"`
+  - [x] 5.7 Enforce 8-second total SLA using `asyncio.timeout`
+  - [x] 5.8 Write unit tests covering: duplicate found, location invalid, low confidence, valid paths
+  - [x] 5.9 Write property-based test: `confidence_score` always ∈ [0.0, 1.0] for any combination of boolean evidence flags
 
-- [ ] 6. Data Intelligence Agent
+- [x] 6. Data Intelligence Agent
   Implement concurrent multi-source data retrieval with per-source timeout handling.
-  - [~] 6.1 Implement `agents/data_intelligence_agent.py` with `data_intelligence_node(state: GraphState) -> GraphState`
-  - [~] 6.2 Implement `asyncio.gather` with `return_exceptions=True` for concurrent BigQuery, Weather, Maps calls
-  - [~] 6.3 Apply 5-second `asyncio.timeout` per source; on timeout set that source's context field to `null` and log failure
-  - [~] 6.4 Apply 10-second total SLA; write consolidated context to GraphState regardless of partial failures
-  - [~] 6.5 Write unit tests: all sources succeed, one source times out, all sources fail
-  - [~] 6.6 Write property-based test: context object always has all expected keys (values may be null) regardless of which sources fail
+  - [x] 6.1 Implement `agents/data_intelligence_agent.py` with `data_intelligence_node(state: GraphState) -> GraphState`
+  - [x] 6.2 Implement `asyncio.gather` with `return_exceptions=True` for concurrent BigQuery, Weather, Maps calls
+  - [x] 6.3 Apply 5-second `asyncio.timeout` per source; on timeout set that source's context field to `null` and log failure
+  - [x] 6.4 Apply 10-second total SLA; write consolidated context to GraphState regardless of partial failures
+  - [x] 6.5 Write unit tests: all sources succeed, one source times out, all sources fail
+  - [x] 6.6 Write property-based test: context object always has all expected keys (values may be null) regardless of which sources fail
 
-- [ ] 7. Analytics Agent
+- [x] 7. Analytics Agent
   Implement trend detection, geospatial clustering, sentiment analysis, and outlier detection.
-  - [~] 7.1 Implement `agents/analytics_agent.py` with `analytics_node(state: GraphState) -> GraphState`
-  - [~] 7.2 Implement insufficient-data guard: if historical records < 5, set `insufficient_data = true` and skip trend/cluster
-  - [~] 7.3 Implement 7-day and 30-day complaint volume trend computation; handle zero-baseline case with `null` + `zero_baseline` flag
-  - [~] 7.4 Implement DBSCAN-based geospatial clustering; flag wards > 1.5 std dev above citywide mean
-  - [~] 7.5 Implement Gemini-based sentiment scoring over last-30-day ward reports → float [-1.0, 1.0]
-  - [~] 7.6 Implement outlier detection: combined z-score of `confidence_score` + complaint frequency; flag if > 2.0 std dev
-  - [~] 7.7 Read Community Health Score from BigQuery `community_scores` where `computed_at` within 25h; set `health_score_unavailable` flag if absent
-  - [~] 7.8 Enforce 12-second SLA
-  - [~] 7.9 Write unit tests for each computation branch including insufficient-data path
-  - [~] 7.10 Write property-based test: `sentiment_score` always ∈ [-1.0, 1.0]; trend values are null or finite floats
+  - [x] 7.1 Implement `agents/analytics_agent.py` with `analytics_node(state: GraphState) -> GraphState`
+  - [x] 7.2 Implement insufficient-data guard: if historical records < 5, set `insufficient_data = true` and skip trend/cluster
+  - [x] 7.3 Implement 7-day and 30-day complaint volume trend computation; handle zero-baseline case with `null` + `zero_baseline` flag
+  - [x] 7.4 Implement DBSCAN-based geospatial clustering; flag wards > 1.5 std dev above citywide mean
+  - [x] 7.5 Implement Gemini-based sentiment scoring over last-30-day ward reports → float [-1.0, 1.0]
+  - [x] 7.6 Implement outlier detection: combined z-score of `confidence_score` + complaint frequency; flag if > 2.0 std dev
+  - [x] 7.7 Read Community Health Score from BigQuery `community_scores` where `computed_at` within 25h; set `health_score_unavailable` flag if absent
+  - [x] 7.8 Enforce 12-second SLA
+  - [x] 7.9 Write unit tests for each computation branch including insufficient-data path
+  - [x] 7.10 Write property-based test: `sentiment_score` always ∈ [-1.0, 1.0]; trend values are null or finite floats
 
-- [ ] 8. Prediction Agent
+- [x] 8. Prediction Agent
   Implement risk forecasting models with explainability.
-  - [~] 8.1 Implement `agents/prediction_agent.py` with `prediction_node(state: GraphState) -> GraphState`
-  - [~] 8.2 Guard: if analytics or weather context is null, set `prediction.error = "insufficient_context"` and return early
-  - [~] 8.3 Implement flood risk logistic regression model using {rainfall_forecast_48h, drainage_capacity, historical_flood_count, slope}
-  - [~] 8.4 Implement road deterioration gradient boosting model using {pothole_count_30d, rainfall_7d, road_age, traffic_density}
-  - [~] 8.5 Implement ARIMA(7,1,1) 7-day volume forecast per ward per category
-  - [~] 8.6 Set `high_risk_alert = true` if flood_risk > 0.75 OR road_risk > 0.75
-  - [~] 8.7 Attach SHAP-based explainability object: top 3 features with weights summing to 100%
-  - [~] 8.8 Enforce 15-second SLA
-  - [~] 8.9 Write unit tests: normal prediction, insufficient context guard, high-risk alert threshold
-  - [~] 8.10 Write property-based test: `flood_risk` and `road_risk` always ∈ [0.0, 1.0]; explainability weights always sum to 100
+  - [x] 8.1 Implement `agents/prediction_agent.py` with `prediction_node(state: GraphState) -> GraphState`
+  - [x] 8.2 Guard: if analytics or weather context is null, set `prediction.error = "insufficient_context"` and return early
+  - [x] 8.3 Implement flood risk logistic regression model using {rainfall_forecast_48h, drainage_capacity, historical_flood_count, slope}
+  - [x] 8.4 Implement road deterioration gradient boosting model using {pothole_count_30d, rainfall_7d, road_age, traffic_density}
+  - [x] 8.5 Implement ARIMA(7,1,1) 7-day volume forecast per ward per category
+  - [x] 8.6 Set `high_risk_alert = true` if flood_risk > 0.75 OR road_risk > 0.75
+  - [x] 8.7 Attach SHAP-based explainability object: top 3 features with weights summing to 100%
+  - [x] 8.8 Enforce 15-second SLA
+  - [x] 8.9 Write unit tests: normal prediction, insufficient context guard, high-risk alert threshold
+  - [x] 8.10 Write property-based test: `flood_risk` and `road_risk` always ∈ [0.0, 1.0]; explainability weights always sum to 100
 
-- [ ] 9. RAG Pipeline
+- [x] 9. RAG Pipeline
   Implement document ingestion, embedding, retrieval, and Gemini-grounded generation.
-  - [~] 9.1 Implement `rag/ingestor.py`: PDF parsing with `pypdf`, 512-token chunks with 64-token overlap, metadata extraction (doc_name, section_heading, page_number, chunk_index, token_count)
-  - [~] 9.2 Implement deterministic chunk serialisation: same PDF always produces identical chunk boundaries and metadata
-  - [~] 9.3 Integrate Vertex AI `text-embedding-004` for 768-dim chunk embeddings
-  - [~] 9.4 Implement Vertex AI Vector Search upsert for ingested chunks
-  - [~] 9.5 Store chunk metadata in Firestore `kb_documents/{document_id}/chunks[]`
-  - [~] 9.6 Handle PDF parse failure: skip document, write error entry to ingestion log, continue remaining documents
-  - [~] 9.7 Implement `rag/retriever.py`: embed query, ANN search top-5 neighbours with score > 0.75, fetch metadata from Firestore
-  - [~] 9.8 Return empty list + `no_policy_context = true` if zero results from Vector Search
-  - [~] 9.9 Implement `rag/generator.py`: construct Gemini 1.5 Pro prompt with retrieved chunks as citations; enforce recommendation includes ≥1 document citation
-  - [~] 9.10 Handle Gemini generation failure/timeout: return error to Recommendation Agent without partial output
-  - [~] 9.11 Write unit tests for chunking, retrieval, and generation paths including empty-results case
-  - [~] 9.12 Write property-based test: for any valid PDF, retrieving with a verbatim sentence always returns ≥1 chunk from that document
+  - [x] 9.1 Implement `rag/ingestor.py`: PDF parsing with `pypdf`, 512-token chunks with 64-token overlap, metadata extraction (doc_name, section_heading, page_number, chunk_index, token_count)
+  - [x] 9.2 Implement deterministic chunk serialisation: same PDF always produces identical chunk boundaries and metadata
+  - [x] 9.3 Integrate Vertex AI `text-embedding-004` for 768-dim chunk embeddings
+  - [x] 9.4 Implement Vertex AI Vector Search upsert for ingested chunks
+  - [x] 9.5 Store chunk metadata in Firestore `kb_documents/{document_id}/chunks[]`
+  - [x] 9.6 Handle PDF parse failure: skip document, write error entry to ingestion log, continue remaining documents
+  - [x] 9.7 Implement `rag/retriever.py`: embed query, ANN search top-5 neighbours with score > 0.75, fetch metadata from Firestore
+  - [x] 9.8 Return empty list + `no_policy_context = true` if zero results from Vector Search
+  - [x] 9.9 Implement `rag/generator.py`: construct Gemini 1.5 Pro prompt with retrieved chunks as citations; enforce recommendation includes ≥1 document citation
+  - [x] 9.10 Handle Gemini generation failure/timeout: return error to Recommendation Agent without partial output
+  - [x] 9.11 Write unit tests for chunking, retrieval, and generation paths including empty-results case
+  - [x] 9.12 Write property-based test: for any valid PDF, retrieving with a verbatim sentence always returns ≥1 chunk from that document
 
-- [ ] 10. Recommendation Agent
+- [x] 10. Recommendation Agent
   Implement priority-matrix-based recommendation generation with policy citations.
-  - [~] 10.1 Implement `agents/recommendation_agent.py` with `recommendation_node(state: GraphState) -> GraphState`
-  - [~] 10.2 Invoke RAG pipeline to retrieve top-5 policy chunks for `{issue.type} + analytics_summary`
-  - [~] 10.3 Implement priority decision matrix: Critical (both risks > 0.75 + density > 5000), High (one risk > 0.75 + density), Medium/Low via analytics
-  - [~] 10.4 Set `confidence_caveat = true` if `validation.status == "low_confidence"` and priority ∈ {High, Critical}
-  - [~] 10.5 Set `disclaimer` field if `no_policy_context == true`
-  - [~] 10.6 Produce recommendation object with all required fields: `action`, `priority`, `rationale`, `cited_policies`, `estimated_impact`
-  - [~] 10.7 Enforce 20-second SLA; Supervisor sets `recommendation.error = "timeout"` on breach
-  - [~] 10.8 Write unit tests covering all priority matrix branches and caveat/disclaimer conditions
-  - [~] 10.9 Write property-based test: `priority` always ∈ {Critical, High, Medium, Low}; `cited_policies` always a list (may be empty only when `no_policy_context` is set)
+  - [x] 10.1 Implement `agents/recommendation_agent.py` with `recommendation_node(state: GraphState) -> GraphState`
+  - [x] 10.2 Invoke RAG pipeline to retrieve top-5 policy chunks for `{issue.type} + analytics_summary`
+  - [x] 10.3 Implement priority decision matrix: Critical (both risks > 0.75 + density > 5000), High (one risk > 0.75 + density), Medium/Low via analytics
+  - [x] 10.4 Set `confidence_caveat = true` if `validation.status == "low_confidence"` and priority ∈ {High, Critical}
+  - [x] 10.5 Set `disclaimer` field if `no_policy_context == true`
+  - [x] 10.6 Produce recommendation object with all required fields: `action`, `priority`, `rationale`, `cited_policies`, `estimated_impact`
+  - [x] 10.7 Enforce 20-second SLA; Supervisor sets `recommendation.error = "timeout"` on breach
+  - [x] 10.8 Write unit tests covering all priority matrix branches and caveat/disclaimer conditions
+  - [x] 10.9 Write property-based test: `priority` always ∈ {Critical, High, Medium, Low}; `cited_policies` always a list (may be empty only when `no_policy_context` is set)
 
-- [ ] 11. Workflow Agent
+- [x] 11. Workflow Agent
   Implement department routing, task creation, SLA due-dates, and escalation.
-  - [~] 11.1 Implement `agents/workflow_agent.py` with `workflow_node(state: GraphState) -> GraphState`
-  - [~] 11.2 Implement department routing table lookup; fallback to `"Admin Review"` and set `routing_fallback` flag for unknown types
-  - [~] 11.3 Create Firestore task record with `issue_id`, `assigned_department`, `priority`, `due_date`, `status: "open"` within 3s
-  - [~] 11.4 Implement due-date SLA: Critical=24h, High=72h, Medium/Low=7d from `datetime.utcnow()`
-  - [~] 11.5 Publish Pub/Sub event to `task-created` topic after successful task creation
-  - [~] 11.6 Implement Firestore retry: 1 retry after 2s; on double failure set `workflow_error` and skip Pub/Sub
-  - [~] 11.7 Log Pub/Sub publish failures with `task_id` and `issue_id` for manual replay
-  - [~] 11.8 Implement escalation Cloud Function: query overdue open tasks, increment priority, publish `task-escalated`; re-publish every 24h for Critical tasks
-  - [~] 11.9 Write unit tests for routing table, due-date computation, Firestore retry, Pub/Sub failure logging
-  - [~] 11.10 Write property-based test: `due_date` is always in the future at creation time for any valid `priority`
+  - [x] 11.1 Implement `agents/workflow_agent.py` with `workflow_node(state: GraphState) -> GraphState`
+  - [x] 11.2 Implement department routing table lookup; fallback to `"Admin Review"` and set `routing_fallback` flag for unknown types
+  - [x] 11.3 Create Firestore task record with `issue_id`, `assigned_department`, `priority`, `due_date`, `status: "open"` within 3s
+  - [x] 11.4 Implement due-date SLA: Critical=24h, High=72h, Medium/Low=7d from `datetime.utcnow()`
+  - [x] 11.5 Publish Pub/Sub event to `task-created` topic after successful task creation
+  - [x] 11.6 Implement Firestore retry: 1 retry after 2s; on double failure set `workflow_error` and skip Pub/Sub
+  - [x] 11.7 Log Pub/Sub publish failures with `task_id` and `issue_id` for manual replay
+  - [x] 11.8 Implement escalation Cloud Function: query overdue open tasks, increment priority, publish `task-escalated`; re-publish every 24h for Critical tasks
+  - [x] 11.9 Write unit tests for routing table, due-date computation, Firestore retry, Pub/Sub failure logging
+  - [x] 11.10 Write property-based test: `due_date` is always in the future at creation time for any valid `priority`
 
-- [ ] 12. Notification Agent
+- [x] 12. Notification Agent
   Implement multi-channel notification delivery with fallback chain.
-  - [~] 12.1 Implement `agents/notification_agent.py` as Pub/Sub subscriber consuming `task-created` and `task-escalated` topics
-  - [~] 12.2 Implement Firestore `onSnapshot` listener for `tasks` collection `status` field changes
-  - [~] 12.3 Implement channel selection: read `preferred_channel` from user Firestore profile; default to email
-  - [~] 12.4 Implement notification dispatch for all lifecycle events: Issue Received, Engineer Assigned, Resolved, Escalated
-  - [~] 12.5 Implement fallback chain: FCM/WhatsApp → retry once (30s) → Email; Email → retry once (30s) → SMS
-  - [~] 12.6 Notify assigned Government Officer on escalation; fallback to Admin Review distribution address if no officer assigned
-  - [~] 12.7 Log all notification attempts to Firestore `notifications` collection with channel, status, attempt_count, failure_reason
-  - [~] 12.8 Enforce 60-second dispatch SLA from trigger event
-  - [~] 12.9 Write unit tests for each lifecycle event and each fallback channel path
-  - [~] 12.10 Write property-based test: for any notification event, at least one delivery attempt is always logged to Firestore
+  - [x] 12.1 Implement `agents/notification_agent.py` as Pub/Sub subscriber consuming `task-created` and `task-escalated` topics
+  - [x] 12.2 Implement Firestore `onSnapshot` listener for `tasks` collection `status` field changes
+  - [x] 12.3 Implement channel selection: read `preferred_channel` from user Firestore profile; default to email
+  - [x] 12.4 Implement notification dispatch for all lifecycle events: Issue Received, Engineer Assigned, Resolved, Escalated
+  - [x] 12.5 Implement fallback chain: FCM/WhatsApp → retry once (30s) → Email; Email → retry once (30s) → SMS
+  - [x] 12.6 Notify assigned Government Officer on escalation; fallback to Admin Review distribution address if no officer assigned
+  - [x] 12.7 Log all notification attempts to Firestore `notifications` collection with channel, status, attempt_count, failure_reason
+  - [x] 12.8 Enforce 60-second dispatch SLA from trigger event
+  - [x] 12.9 Write unit tests for each lifecycle event and each fallback channel path
+  - [x] 12.10 Write property-based test: for any notification event, at least one delivery attempt is always logged to Firestore
 
-- [ ] 13. FastAPI Gateway
+- [x] 13. FastAPI Gateway
   Implement the API Gateway with JWT auth, rate limiting, schema validation, SSE streaming, and request logging.
-  - [~] 13.1 Implement `backend/main.py` FastAPI app with all routes from the API design (Section 5.1)
-  - [~] 13.2 Implement JWT middleware: validate RS256 signature, `exp`, and `user_id`; return HTTP 401 on any failure
-  - [~] 13.3 Implement Redis (Memorystore) sliding-window rate limiter: 60 requests per 60s per `user_id`; return HTTP 429 + `Retry-After`
-  - [~] 13.4 Implement Pydantic request schemas for all POST endpoints; return HTTP 422 with field-level violations on failure
-  - [~] 13.5 Implement `GET /chat/stream/{session_id}` SSE endpoint: open stream, forward agent progress events, close on pipeline completion or client disconnect
-  - [~] 13.6 Implement RBAC middleware: enforce ward_ids scope for community_leader and government_officer roles; return HTTP 403 on out-of-scope requests
-  - [~] 13.7 Implement request logging middleware writing all requests to Cloud Logging with timestamp, user_id, endpoint, method, status_code, latency_ms
-  - [~] 13.8 Implement `/auth/login` endpoint producing JWTs via Firebase Authentication
-  - [~] 13.9 Implement `/health` endpoint returning service status
-  - [~] 13.10 Write unit tests for all JWT rejection cases, rate limiting, and RBAC enforcement
-  - [~] 13.11 Write property-based test: any request with a missing or malformed JWT always returns HTTP 401
+  - [x] 13.1 Implement `backend/main.py` FastAPI app with all routes from the API design (Section 5.1)
+  - [x] 13.2 Implement JWT middleware: validate RS256 signature, `exp`, and `user_id`; return HTTP 401 on any failure
+  - [x] 13.3 Implement Redis (Memorystore) sliding-window rate limiter: 60 requests per 60s per `user_id`; return HTTP 429 + `Retry-After`
+  - [x] 13.4 Implement Pydantic request schemas for all POST endpoints; return HTTP 422 with field-level violations on failure
+  - [x] 13.5 Implement `GET /chat/stream/{session_id}` SSE endpoint: open stream, forward agent progress events, close on pipeline completion or client disconnect
+  - [x] 13.6 Implement RBAC middleware: enforce ward_ids scope for community_leader and government_officer roles; return HTTP 403 on out-of-scope requests
+  - [x] 13.7 Implement request logging middleware writing all requests to Cloud Logging with timestamp, user_id, endpoint, method, status_code, latency_ms
+  - [x] 13.8 Implement `/auth/login` endpoint producing JWTs via Firebase Authentication
+  - [x] 13.9 Implement `/health` endpoint returning service status
+  - [x] 13.10 Write unit tests for all JWT rejection cases, rate limiting, and RBAC enforcement
+  - [x] 13.11 Write property-based test: any request with a missing or malformed JWT always returns HTTP 401
 
-- [ ] 14. Community Health Score Service
+- [x] 14. Community Health Score Service
   Implement the scheduled score computation and health score API endpoint.
-  - [~] 14.1 Implement `functions/health_score.py` Cloud Function with `compute_health_score(sub_scores)` using weight rebalancing for missing sub-scores
-  - [~] 14.2 Implement BigQuery sub-score derivation: count resolved vs. open issues per category per ward over 90 days, min-max normalize to 0–100
-  - [~] 14.3 Implement transition detection: flag ward as `at_risk = true` when score crosses below 60; remove flag when score crosses 60 or above
-  - [~] 14.4 Publish Pub/Sub `health-score-updated` event on at-risk transitions
-  - [~] 14.5 Implement BigQuery write with last-known-score fallback on write failure
-  - [~] 14.6 Configure Cloud Scheduler to trigger daily at 00:00 UTC
-  - [~] 14.7 Implement `GET /analytics/ward/{ward_id}/health-score` endpoint returning 90-day history; HTTP 404 if ward not found
-  - [~] 14.8 Write unit tests for weight rebalancing, transition detection, and at-risk flagging
-  - [~] 14.9 Write property-based test: `compute_health_score` always returns a value ∈ [0.0, 100.0]; available weights always sum to 1.0
+  - [x] 14.1 Implement `functions/health_score.py` Cloud Function with `compute_health_score(sub_scores)` using weight rebalancing for missing sub-scores
+  - [x] 14.2 Implement BigQuery sub-score derivation: count resolved vs. open issues per category per ward over 90 days, min-max normalize to 0–100
+  - [x] 14.3 Implement transition detection: flag ward as `at_risk = true` when score crosses below 60; remove flag when score crosses 60 or above
+  - [x] 14.4 Publish Pub/Sub `health-score-updated` event on at-risk transitions
+  - [x] 14.5 Implement BigQuery write with last-known-score fallback on write failure
+  - [x] 14.6 Configure Cloud Scheduler to trigger daily at 00:00 UTC
+  - [x] 14.7 Implement `GET /analytics/ward/{ward_id}/health-score` endpoint returning 90-day history; HTTP 404 if ward not found
+  - [x] 14.8 Write unit tests for weight rebalancing, transition detection, and at-risk flagging
+  - [x] 14.9 Write property-based test: `compute_health_score` always returns a value ∈ [0.0, 100.0]; available weights always sum to 1.0
 
-- [ ] 15. Knowledge Base Admin API
+- [x] 15. Knowledge Base Admin API
   Implement document upload, deletion, and listing for the RAG knowledge base.
-  - [~] 15.1 Implement `POST /admin/knowledge-base` endpoint: validate PDF ≤50MB, store to Cloud Storage, trigger RAG ingestion, return `document_id` within 5s
-  - [~] 15.2 Implement `DELETE /admin/knowledge-base/{document_id}` endpoint: remove Cloud Storage file, delete all Vector Search embeddings for the document, remove Firestore metadata
-  - [~] 15.3 Implement `GET /admin/knowledge-base` endpoint: list all documents with `document_id`, `name`, `status`, `chunk_count`, `ingested_at`
-  - [~] 15.4 Enforce Admin-only RBAC on all `/admin/knowledge-base` endpoints
-  - [~] 15.5 Write unit tests for upload validation (size limit, non-PDF rejection), delete cascade, and listing
-  - [~] 15.6 Write integration test: upload a PDF → verify chunks appear in Vector Search → delete → verify chunks removed
+  - [x] 15.1 Implement `POST /admin/knowledge-base` endpoint: validate PDF ≤50MB, store to Cloud Storage, trigger RAG ingestion, return `document_id` within 5s
+  - [x] 15.2 Implement `DELETE /admin/knowledge-base/{document_id}` endpoint: remove Cloud Storage file, delete all Vector Search embeddings for the document, remove Firestore metadata
+  - [x] 15.3 Implement `GET /admin/knowledge-base` endpoint: list all documents with `document_id`, `name`, `status`, `chunk_count`, `ingested_at`
+  - [x] 15.4 Enforce Admin-only RBAC on all `/admin/knowledge-base` endpoints
+  - [x] 15.5 Write unit tests for upload validation (size limit, non-PDF rejection), delete cascade, and listing
+  - [x] 15.6 Write integration test: upload a PDF → verify chunks appear in Vector Search → delete → verify chunks removed
 
-- [ ] 16. Dashboard and BigQuery View
+- [x] 16. Dashboard and BigQuery View
   Implement the `sampark_dashboard_view` and dashboard API endpoint.
-  - [~] 16.1 Create BigQuery SQL view `sampark_dashboard_view` joining `issues`, `community_scores`, `predictions`, `tasks` aggregated by `ward_id` and date
-  - [~] 16.2 View must expose: `complaint_volume`, `avg_health_score`, `max_flood_risk`, `max_road_risk`, `resolution_rate`, `open_critical_count` without additional joins
-  - [~] 16.3 Implement `GET /analytics/dashboard` endpoint: return latest health score, risk heatmap data, 7-day trend, top 5 Critical open issues for requesting user's ward scope
-  - [~] 16.4 Implement Firestore `onSnapshot` → SSE push for real-time task status updates to dashboard clients within 5s
-  - [~] 16.5 Enforce ward-scope filtering from JWT `ward_ids` claim on all dashboard data
-  - [~] 16.6 Write query performance test: `sampark_dashboard_view` query completes in < 3s on 100,000-row dataset
-  - [~] 16.7 Write unit tests for ward-scope filtering and SSE event emission
+  - [x] 16.1 Create BigQuery SQL view `sampark_dashboard_view` joining `issues`, `community_scores`, `predictions`, `tasks` aggregated by `ward_id` and date
+  - [x] 16.2 View must expose: `complaint_volume`, `avg_health_score`, `max_flood_risk`, `max_road_risk`, `resolution_rate`, `open_critical_count` without additional joins
+  - [x] 16.3 Implement `GET /analytics/dashboard` endpoint: return latest health score, risk heatmap data, 7-day trend, top 5 Critical open issues for requesting user's ward scope
+  - [x] 16.4 Implement Firestore `onSnapshot` → SSE push for real-time task status updates to dashboard clients within 5s
+  - [x] 16.5 Enforce ward-scope filtering from JWT `ward_ids` claim on all dashboard data
+  - [x] 16.6 Write query performance test: `sampark_dashboard_view` query completes in < 3s on 100,000-row dataset
+  - [x] 16.7 Write unit tests for ward-scope filtering and SSE event emission
 
 - [ ] 17. Frontend React Application
   Implement the citizen portal and government officer dashboard.

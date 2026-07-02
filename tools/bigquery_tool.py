@@ -104,6 +104,27 @@ class BigQueryTool:
             )
             return False
 
+    async def read_community_health_score(self, ward_id: str) -> float | None:
+        """Fetch the latest Community Health Score for a ward.
+
+        Args:
+            ward_id: Ward identifier.
+
+        Returns:
+            The health score float [0.0, 100.0] if computed within the last 25 hours,
+            otherwise None.
+        """
+        loop = asyncio.get_event_loop()
+        try:
+            return await loop.run_in_executor(
+                None,
+                self._sync_read_community_health_score,
+                ward_id,
+            )
+        except Exception:
+            logger.exception("read_community_health_score failed for ward_id=%s", ward_id)
+            return None
+
     # ------------------------------------------------------------------
     # Private synchronous helpers (run inside a thread executor)
     # ------------------------------------------------------------------
@@ -165,3 +186,30 @@ class BigQueryTool:
             return False
 
         return True
+
+    def _sync_read_community_health_score(self, ward_id: str) -> float | None:
+        """Blocking implementation of :meth:`read_community_health_score`."""
+        table = f"`{self._project_id}.{self._dataset}.community_scores`"
+
+        sql = f"""
+            SELECT health_score
+            FROM   {table}
+            WHERE  ward_id = @ward_id
+               AND computed_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 25 HOUR)
+            ORDER BY computed_at DESC
+            LIMIT 1
+        """
+
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("ward_id", "STRING", ward_id),
+            ]
+        )
+
+        query_job = self._client.query(sql, job_config=job_config)
+        rows = list(query_job.result())
+
+        if rows:
+            return float(rows[0]["health_score"])
+        return None
+
