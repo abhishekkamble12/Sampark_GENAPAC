@@ -77,7 +77,7 @@ Implementation of the Sampark AI Decision Intelligence Platform — a multi-agen
 
 - [ ] 5. Validation Agent
   Implement credibility scoring, duplicate detection, and location verification.
-  - [-] 5.1 Implement `agents/validation_agent.py` with `validation_node(state: GraphState) -> GraphState`
+  - [ ] 5.1 Implement `agents/validation_agent.py` with `validation_node(state: GraphState) -> GraphState`
   - [~] 5.2 Implement Firestore geo-radius query for duplicate detection within 500m with same `issue.type`; set `validation.duplicate`
   - [~] 5.3 Implement Maps Tool geocoding call to verify address within configured boundary; set `validation.location_verified`
   - [~] 5.4 Implement Weather Tool call for corroborating evidence
