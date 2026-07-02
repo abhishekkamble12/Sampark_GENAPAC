@@ -12,9 +12,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger("sampark.gateway")
 
-# 13.2 Mock JWT Secret & Config
-JWT_SECRET = "mock_secret_key"
-JWT_ALGORITHM = "HS256" # Using HS256 for mock simplicity instead of full RS256 PKI
+from backend.config import settings
 
 # 13.3 In-memory rate limiter mock (replaces Redis)
 _rate_limit_cache: Dict[str, List[float]] = {}
@@ -60,7 +58,7 @@ class AuthAndRateLimitMiddleware(BaseHTTPMiddleware):
         token = auth_header.split(" ")[1]
         try:
             # 13.2 Validate JWT signature and exp
-            payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
             user_id = payload.get("user_id")
             if not user_id:
                 return JSONResponse({"detail": "Token missing user_id"}, status_code=401)

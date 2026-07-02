@@ -5,14 +5,15 @@ import jwt
 import pytest
 from httpx import AsyncClient, ASGITransport
 from backend.main import app
-from backend.middleware import JWT_SECRET, JWT_ALGORITHM, _rate_limit_cache
+from backend.config import settings
+from backend.middleware import _rate_limit_cache
 
 def _make_token(user_id="u1", role="citizen", ward_ids=None, expired=False):
     if ward_ids is None:
         ward_ids = []
     exp = time.time() - 3600 if expired else time.time() + 3600
     payload = {"user_id": user_id, "role": role, "ward_ids": ward_ids, "exp": exp}
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 @pytest.fixture
 def client():

@@ -380,3 +380,36 @@ class FirestoreTool:
                 )
 
         return unsubscribe
+
+    async def save_document_chunks(self, doc_name: str, chunks: list[dict[str, Any]]) -> None:
+        if not self._db:
+            return
+        batch = self._db.batch()
+        for chunk in chunks:
+            ref = self._db.collection("knowledge_base").document(f"{doc_name}_{chunk['chunk_index']}")
+            batch.set(ref, chunk)
+        await batch.commit()
+
+    async def get_chunk_metadata(self, doc_name: str, chunk_idx: int) -> dict[str, Any] | None:
+        if not self._db:
+            return None
+        ref = self._db.collection("knowledge_base").document(f"{doc_name}_{chunk_idx}")
+        doc = await ref.get()
+        return doc.to_dict() if doc.exists else None
+
+    async def get_document_chunks(self, doc_name: str) -> list[dict[str, Any]]:
+        if not self._db:
+            return []
+        _FieldFilter = _get_field_filter()
+        docs = self._db.collection("knowledge_base").where(filter=_FieldFilter("doc_name", "==", doc_name)).stream()
+        return [doc.to_dict() async for doc in docs]
+
+    async def delete_document_metadata(self, doc_name: str) -> None:
+        if not self._db:
+            return
+        _FieldFilter = _get_field_filter()
+        docs = self._db.collection("knowledge_base").where(filter=_FieldFilter("doc_name", "==", doc_name)).stream()
+        batch = self._db.batch()
+        async for doc in docs:
+            batch.delete(doc.reference)
+        await batch.commit()

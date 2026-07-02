@@ -222,6 +222,71 @@ resource "google_bigquery_table" "predictions" {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Table: tasks
+# ─────────────────────────────────────────────────────────────────────────────
+
+resource "google_bigquery_table" "tasks" {
+  project    = var.project_id
+  dataset_id = google_bigquery_dataset.sampark_analytics.dataset_id
+  table_id   = "tasks"
+
+  description = "Workflow tasks assigned to departments"
+
+  deletion_protection = false
+
+  schema = jsonencode([
+    {
+      name = "task_id"
+      type = "STRING"
+      mode = "REQUIRED"
+      description = "Unique task identifier"
+    },
+    {
+      name = "issue_id"
+      type = "STRING"
+      mode = "NULLABLE"
+      description = "Foreign key referencing the source issue"
+    },
+    {
+      name = "ward_id"
+      type = "STRING"
+      mode = "NULLABLE"
+      description = "Ward identifier for the task"
+    },
+    {
+      name = "assigned_department"
+      type = "STRING"
+      mode = "NULLABLE"
+      description = "Department assigned to the task"
+    },
+    {
+      name = "priority"
+      type = "STRING"
+      mode = "NULLABLE"
+      description = "Priority level: Critical, High, Medium, Low"
+    },
+    {
+      name = "status"
+      type = "STRING"
+      mode = "NULLABLE"
+      description = "Current status: open, in_progress, resolved, completed"
+    },
+    {
+      name = "due_date"
+      type = "TIMESTAMP"
+      mode = "NULLABLE"
+      description = "SLA deadline"
+    },
+    {
+      name = "created_at"
+      type = "TIMESTAMP"
+      mode = "NULLABLE"
+      description = "Timestamp when the task was created"
+    }
+  ])
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Outputs
 # ─────────────────────────────────────────────────────────────────────────────
 

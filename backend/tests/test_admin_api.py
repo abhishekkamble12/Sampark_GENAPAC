@@ -5,6 +5,15 @@ from httpx import AsyncClient, ASGITransport
 from backend.main import app
 from backend.tests.test_gateway import _make_token
 
+@pytest.fixture(autouse=True)
+def mock_pdf_reader(monkeypatch):
+    class MockPage:
+        def extract_text(self): return "Mock text"
+    class MockReader:
+        def __init__(self, stream):
+            self.pages = [MockPage(), MockPage()]
+    monkeypatch.setattr("rag.ingestor.pypdf.PdfReader", MockReader)
+
 @pytest.fixture
 def admin_token():
     return _make_token(user_id="admin1", role="government_officer", ward_ids=["*"])

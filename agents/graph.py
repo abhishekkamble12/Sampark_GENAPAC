@@ -120,45 +120,56 @@ def check_recommendation_timeout(state: GraphState) -> str:
     return "workflow_node"
 
 
-# ---------------------------------------------------------------------------
-# Stub node implementations
-# (replaced by real agents in tasks 4-12; each stub returns state unchanged)
-# ---------------------------------------------------------------------------
+from agents.intake_agent import make_intake_node
+from agents.validation_agent import make_validation_node
+from agents.data_intelligence_agent import make_data_intelligence_node
+from agents.analytics_agent import make_analytics_node
+from agents.prediction_agent import make_prediction_node
+from agents.recommendation_agent import make_recommendation_node
+from agents.workflow_agent import make_workflow_node
 
+from backend.config import settings
+import google.generativeai as genai
+from google.cloud import firestore_v1, pubsub_v1
 
-def intake_node(state: GraphState) -> GraphState:  # pragma: no cover – stub
-    """Stub: Intake Agent (see task 4)."""
-    return state
+from tools.speech_tool import SpeechTool
+from tools.vision_tool import VisionTool
+from tools.firestore_tool import FirestoreTool
+from tools.maps_tool import MapsTool
+from tools.weather_tool import WeatherTool
+from tools.bigquery_tool import BigQueryTool
+from tools.vertex_tool import VertexSearchTool
+from rag.retriever import Retriever
+from rag.generator import Generator
 
+speech_tool = SpeechTool(project_id=settings.GCP_PROJECT_ID)
+vision_tool = VisionTool(project_id=settings.GCP_PROJECT_ID)
+genai.configure(api_key=settings.GEMINI_API_KEY)
+gemini_model = genai.GenerativeModel("gemini-1.5-pro-latest")
 
-def validation_node(state: GraphState) -> GraphState:  # pragma: no cover – stub
-    """Stub: Validation Agent (see task 5)."""
-    return state
+if settings.APP_MODE == "production":
+    firestore_client = firestore_v1.AsyncClient(project=settings.GCP_PROJECT_ID)
+    pubsub_client = pubsub_v1.PublisherClient()
+else:
+    firestore_client = None
+    pubsub_client = None
 
+fs_tool = FirestoreTool(firestore_client)
+maps_tool = MapsTool(api_key=settings.GOOGLE_MAPS_API_KEY)
+weather_tool = WeatherTool(api_key=settings.OPENWEATHER_API_KEY)
+bq_tool = BigQueryTool(project_id=settings.GCP_PROJECT_ID, dataset=settings.BIGQUERY_DATASET)
+vertex_tool = VertexSearchTool(project_id=settings.GCP_PROJECT_ID)
 
-def data_intelligence_node(state: GraphState) -> GraphState:  # pragma: no cover – stub
-    """Stub: Data Intelligence Agent (see task 6)."""
-    return state
+retriever = Retriever(vertex_tool, fs_tool)
+generator = Generator(gemini_model)
 
-
-def analytics_node(state: GraphState) -> GraphState:  # pragma: no cover – stub
-    """Stub: Analytics Agent (see task 7)."""
-    return state
-
-
-def prediction_node(state: GraphState) -> GraphState:  # pragma: no cover – stub
-    """Stub: Prediction Agent (see task 8)."""
-    return state
-
-
-def recommendation_node(state: GraphState) -> GraphState:  # pragma: no cover – stub
-    """Stub: Recommendation Agent (see task 10)."""
-    return state
-
-
-def workflow_node(state: GraphState) -> GraphState:  # pragma: no cover – stub
-    """Stub: Workflow Agent (see task 11)."""
-    return state
+intake_node = make_intake_node(speech_tool, vision_tool, gemini_model)
+validation_node = make_validation_node(fs_tool, maps_tool, weather_tool)
+data_intelligence_node = make_data_intelligence_node(bq_tool, weather_tool, maps_tool)
+analytics_node = make_analytics_node(gemini_model, bq_tool)
+prediction_node = make_prediction_node()
+recommendation_node = make_recommendation_node(retriever, generator)
+workflow_node = make_workflow_node(fs_tool, pubsub_client)
 
 
 def notification_dispatch_node(state: GraphState) -> GraphState:  # pragma: no cover – stub

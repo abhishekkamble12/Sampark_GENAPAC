@@ -1,0 +1,282 @@
+Here’s the clean improvement path for the backend, in the order I’d do it.
+
+**1. Fix Dependencies**
+Add real backend dependencies in `pyproject.toml`:
+
+- `fastapi`
+- `uvicorn`
+- `pydantic`
+- `pyjwt`
+- `langgraph`
+- `langchain`
+- `google-cloud-firestore`
+- `google-cloud-bigquery`
+- `google-cloud-pubsub`
+- `google-cloud-storage`
+- `httpx`
+- `pytest`
+- `pytest-asyncio`
+
+Right now `dependencies = []`, so the backend cannot reliably run anywhere fresh.
+
+**2. Wire FastAPI To LangGraph**
+Update `/issues` in `backend/main.py`.
+
+Current behavior: returns `"received"` only.
+
+Target behavior:
+
+```text
+POST /issues
+↓
+Create GraphState
+↓
+Call LangGraph pipeline
+↓
+Return session_id + initial response
+```
+
+This is the most important improvement.
+
+**3. Replace Stub Graph Nodes**
+In `agents/graph.py`, the graph currently uses stub functions like:
+
+```python
+def intake_node(state):
+    return state
+```
+
+Replace those with real nodes from:
+
+- `agents/intake_agent.py`
+- `agents/validation_agent.py`
+- `agents/data_intelligence_agent.py`
+- `agents/analytics_agent.py`
+- `agents/prediction_agent.py`
+- `agents/recommendation_agent.py`
+- `agents/workflow_agent.py`
+
+Until this is done, LangGraph exists but does not actually process anything.
+
+**4. Create Real App Configuration**
+Add a config module, for example:
+
+```text
+backend/config.py
+```
+
+It should load:
+
+- JWT secret / public key
+- Google project ID
+- Firestore settings
+- BigQuery dataset
+- Maps API key
+- Weather API key
+- Pub/Sub topics
+- environment name
+
+Avoid hardcoded values like `mock_secret_key`.
+
+**5. Fix Authentication**
+Current auth is mock login with hardcoded users.
+
+Improve in stages:
+
+1. Keep local JWT auth for development.
+2. Move secret to env/config.
+3. Add password hashing with `bcrypt`.
+4. Later integrate Firebase Auth or Google Identity.
+
+Also make invalid login return HTTP `401`, not a normal JSON error.
+
+**6. Fix Rate Limiting**
+Current rate limiting is in memory, so it resets on restart and breaks across multiple instances.
+
+Upgrade path:
+
+```text
+In-memory limiter
+↓
+Redis-compatible abstraction
+↓
+Google Memorystore Redis in production
+```
+
+For hackathon/local use, keep in-memory as fallback.
+
+**7. Add Persistence For Issues**
+When `/issues` is called, save the issue/session to Firestore.
+
+Collections should include:
+
+```text
+users
+issues
+tasks
+sessions
+notifications
+```
+
+Minimum needed now:
+
+- `issues`
+- `sessions`
+- `tasks`
+
+**8. Make Tool Interfaces Consistent**
+Some code expects `firestore_tool.set_document`, while workflow expects `create_document`.
+
+Standardize names:
+
+```python
+set_document()
+get_document()
+update_document()
+delete_document()
+geo_radius_query()
+```
+
+Then update all agents to use the same interface.
+
+**9. Fix Workflow Routing**
+Current routing table uses:
+
+```python
+pothole
+flood
+garbage
+```
+
+But your system uses:
+
+```python
+road
+sanitation
+water
+electricity
+flood
+traffic
+health
+other
+```
+
+Fix it to:
+
+```python
+DEPARTMENT_MAP = {
+    "road": "Public Works Department",
+    "sanitation": "Sanitation & Waste Management",
+    "water": "Water Supply Department",
+    "electricity": "Electricity Board",
+    "flood": "Disaster Management Cell",
+    "traffic": "Traffic Police / Urban Mobility",
+    "health": "Public Health Department",
+    "other": "Admin Review",
+}
+```
+
+**10. Fix BigQuery Schema Mismatches**
+Your dashboard SQL and Terraform schema disagree.
+
+Example mismatch:
+
+- SQL uses `created_at`
+- Terraform uses `reported_at`
+- SQL uses `health_score`
+- Terraform uses `overall`
+- SQL references `sampark.tasks`, but Terraform does not create a `tasks` table
+
+Make the SQL match `infra/bigquery.tf`, or update Terraform to include the missing columns/tables.
+
+**11. Replace Mock Dashboard Data**
+`/analytics/dashboard` currently returns hardcoded values.
+
+Upgrade it to query:
+
+- BigQuery for trends and health scores
+- Firestore for open tasks
+- predictions table for risk heatmap
+
+**12. Implement Real RAG Storage**
+RAG ingestion currently uses mock PDF parsing and mock vector clients.
+
+Improve in stages:
+
+1. Use `pypdf` for PDF extraction.
+2. Store chunks in Firestore.
+3. Use local embeddings/mock embeddings for demo.
+4. Later replace with Vertex AI embeddings and Vector Search.
+
+**13. Add A Local Backend Mode**
+Since Google Cloud setup is heavy, add two modes:
+
+```text
+APP_MODE=local
+APP_MODE=production
+```
+
+Local mode can use:
+
+- mock Gemini
+- in-memory Firestore adapter
+- fake Pub/Sub adapter
+- local test data
+
+Production mode uses real Google Cloud clients.
+
+This will make the project much easier to demo.
+
+**14. Run And Fix Tests**
+Once dependencies are declared:
+
+```bash
+pip install -e ".[dev]"
+python -m pytest
+```
+
+Then fix failing tests one module at a time:
+
+1. `agents`
+2. `tools`
+3. `rag`
+4. `backend`
+
+**15. Add One Real End-To-End Flow**
+Before building everything, make one complete backend flow work:
+
+```text
+Citizen submits road issue
+↓
+Intake extracts issue
+↓
+Validation scores it
+↓
+Data context is loaded
+↓
+Recommendation generated
+↓
+Task created
+↓
+API returns session result
+```
+
+This one working vertical slice is more valuable than ten half-wired modules.
+
+**Best Order**
+Do it like this:
+
+```text
+1. Dependencies
+2. Config
+3. Auth cleanup
+4. Wire FastAPI to LangGraph
+5. Replace graph stubs
+6. Firestore persistence
+7. Workflow routing
+8. Dashboard SQL/schema fix
+9. RAG cleanup
+10. End-to-end test
+```
+
+The biggest win is steps 2 to 5. Once FastAPI actually calls a real LangGraph pipeline, the backend will start feeling like a real system instead of a documented scaffold.

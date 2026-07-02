@@ -12,7 +12,7 @@ class _MockFirestore:
         self.fail_always = fail_always
         self.attempts = 0
         self.docs = {}
-    async def create_document(self, col, doc_id, data):
+    async def set_document(self, col, doc_id, data):
         self.attempts += 1
         if self.fail_always or (self.fail_first and self.attempts == 1):
             raise Exception("Firestore error")
@@ -27,7 +27,7 @@ class _MockPubSub:
             raise Exception("PubSub down")
         self.published.append((topic, payload))
 
-def _make_state(issue_type="pothole", priority="High") -> GraphState:
+def _make_state(issue_type="road", priority="High") -> GraphState:
     return {
         "issue": {"id": "123", "type": issue_type},
         "recommendation": {"priority": priority},
@@ -42,8 +42,8 @@ def _make_state(issue_type="pothole", priority="High") -> GraphState:
 async def test_routing_fallback():
     node = make_workflow_node(_MockFirestore(), _MockPubSub())
     # known type
-    res1 = await node(_make_state(issue_type="pothole"))
-    assert res1["workflow"]["assigned_department"] == "Public Works"
+    res1 = await node(_make_state(issue_type="road"))
+    assert res1["workflow"]["assigned_department"] == "Public Works Department"
     assert res1["workflow"]["routing_fallback"] is False
     
     # unknown type

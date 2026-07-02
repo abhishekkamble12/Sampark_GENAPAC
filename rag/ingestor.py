@@ -7,8 +7,10 @@ and simulates upserting to Vertex AI Vector Search and Firestore.
 
 from __future__ import annotations
 
+import io
 import logging
 from typing import Any, List, Dict
+import pypdf
 
 logger = logging.getLogger(__name__)
 
@@ -34,21 +36,7 @@ class DocumentChunk:
             "token_count": self.token_count
         }
 
-class MockPdfReader:
-    """Mock for pypdf.PdfReader to extract text page-by-page."""
-    def __init__(self, file_bytes: bytes):
-        # Decode bytes just to simulate reading text, fallback to generic
-        try:
-            content = file_bytes.decode('utf-8')
-        except UnicodeDecodeError:
-            content = "Mocked PDF content fallback."
-            
-        # Pretend we split it into pages by double newline
-        pages = content.split('\n\n')
-        self.pages = [type('Page', (), {'extract_text': lambda self=self, t=p: t})() for p in pages if p.strip()]
-        
-        if not self.pages:
-            self.pages = [type('Page', (), {'extract_text': lambda self=self: "Empty page"})()]
+
 
 class Ingestor:
     """Handles parsing, chunking, and storage of documents."""
@@ -88,7 +76,7 @@ class Ingestor:
     async def ingest_pdf(self, doc_name: str, file_bytes: bytes) -> bool:
         """Parse PDF, chunk, embed, and store."""
         try:
-            reader = MockPdfReader(file_bytes)
+            reader = pypdf.PdfReader(io.BytesIO(file_bytes))
         except Exception:
             logger.exception("Failed to parse PDF %s", doc_name)
             return False

@@ -6,28 +6,28 @@ CREATE OR REPLACE VIEW sampark_dashboard_view AS
 WITH daily_issues AS (
     SELECT 
         ward_id,
-        DATE(created_at) as event_date,
+        DATE(reported_at) as event_date,
         COUNT(issue_id) as complaint_volume,
         COUNTIF(status = 'resolved') as resolved_count,
-        COUNTIF(status != 'resolved' AND priority = 'Critical') as open_critical_count
-    FROM `sampark.issues`
+        COUNTIF(status != 'resolved' AND severity = 'Critical') as open_critical_count
+    FROM `sampark_analytics.issues`
     GROUP BY ward_id, event_date
 ),
 daily_scores AS (
     SELECT 
         ward_id,
         DATE(computed_at) as event_date,
-        AVG(health_score) as avg_health_score
-    FROM `sampark.community_scores`
+        AVG(overall) as avg_health_score
+    FROM `sampark_analytics.community_scores`
     GROUP BY ward_id, event_date
 ),
 daily_predictions AS (
     SELECT
         ward_id,
-        DATE(predicted_at) as event_date,
-        MAX(IF(risk_type = 'flooding', risk_score, 0)) as max_flood_risk,
-        MAX(IF(risk_type = 'road', risk_score, 0)) as max_road_risk
-    FROM `sampark.predictions`
+        DATE(computed_at) as event_date,
+        MAX(flood_risk) as max_flood_risk,
+        MAX(road_risk) as max_road_risk
+    FROM `sampark_analytics.predictions`
     GROUP BY ward_id, event_date
 ),
 daily_tasks AS (
@@ -36,7 +36,7 @@ daily_tasks AS (
         DATE(created_at) as event_date,
         COUNT(task_id) as total_tasks,
         COUNTIF(status = 'completed') as completed_tasks
-    FROM `sampark.tasks`
+    FROM `sampark_analytics.tasks`
     GROUP BY ward_id, event_date
 )
 

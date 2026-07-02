@@ -16,10 +16,15 @@ from agents.state import GraphState, WorkflowResult
 
 logger = logging.getLogger(__name__)
 
-ROUTING_TABLE = {
-    "pothole": "Public Works",
-    "flood": "Water Management",
-    "garbage": "Sanitation",
+DEPARTMENT_MAP = {
+    "road": "Public Works Department",
+    "sanitation": "Sanitation & Waste Management",
+    "water": "Water Supply Department",
+    "electricity": "Electricity Board",
+    "flood": "Disaster Management Cell",
+    "traffic": "Traffic Police / Urban Mobility",
+    "health": "Public Health Department",
+    "other": "Admin Review",
 }
 
 def make_workflow_node(
@@ -45,8 +50,8 @@ def make_workflow_node(
         priority = recommendation.get("priority", "Low")
         
         # 11.2 Routing lookup
-        dept = ROUTING_TABLE.get(issue_type)
-        if not dept:
+        dept = DEPARTMENT_MAP.get(issue_type)
+        if not dept or dept == "Admin Review":
             dept = "Admin Review"
             result["routing_fallback"] = True
             
@@ -78,13 +83,13 @@ def make_workflow_node(
         # 11.3 & 11.6 Firestore Creation & Retry (1 retry after 2s)
         fs_success = False
         try:
-            await firestore_client.create_document("tasks", task_id, task_doc)
+            await firestore_client.set_document("tasks", task_id, task_doc)
             fs_success = True
         except Exception:
             logger.warning("Firestore initial write failed. Retrying in 2 seconds...")
             await asyncio.sleep(2.0)
             try:
-                await firestore_client.create_document("tasks", task_id, task_doc)
+                await firestore_client.set_document("tasks", task_id, task_doc)
                 fs_success = True
             except Exception:
                 logger.exception("Firestore retry failed for task %s", task_id)
