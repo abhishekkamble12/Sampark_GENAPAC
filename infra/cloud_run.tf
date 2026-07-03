@@ -4,13 +4,7 @@
 
 resource "google_service_account" "api_gateway" {
   account_id   = "sampark-api-gateway"
-  display_name = "Sampark API Gateway Service Account"
-  project      = var.project_id
-}
-
-resource "google_service_account" "langgraph_engine" {
-  account_id   = "sampark-langgraph-engine"
-  display_name = "Sampark LangGraph Engine Service Account"
+  display_name = "Sampark API Gateway Service Account (ADK)"
   project      = var.project_id
 }
 
@@ -21,7 +15,7 @@ resource "google_service_account" "notification_worker" {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
-# IAM — Secret Manager accessor (all three services need secrets)
+# IAM — Secret Manager accessor
 # ──────────────────────────────────────────────────────────────────────────────
 
 resource "google_project_iam_member" "api_gateway_secret_accessor" {
@@ -30,54 +24,47 @@ resource "google_project_iam_member" "api_gateway_secret_accessor" {
   member  = "serviceAccount:${google_service_account.api_gateway.email}"
 }
 
-resource "google_project_iam_member" "langgraph_engine_secret_accessor" {
-  project = var.project_id
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.langgraph_engine.email}"
-}
-
 resource "google_project_iam_member" "notification_worker_secret_accessor" {
   project = var.project_id
   role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${google_service_account.notification_worker.email}"
 }
 
-# API Gateway — Cloud Logging writer
+# API Gateway — Cloud Logging writer + Firestore + BigQuery + Vertex AI + Pub/Sub + Storage
 resource "google_project_iam_member" "api_gateway_log_writer" {
   project = var.project_id
   role    = "roles/logging.logWriter"
   member  = "serviceAccount:${google_service_account.api_gateway.email}"
 }
 
-# LangGraph Engine — Firestore, Pub/Sub, Vertex AI, BigQuery
-resource "google_project_iam_member" "langgraph_firestore_user" {
+resource "google_project_iam_member" "api_gateway_firestore_user" {
   project = var.project_id
   role    = "roles/datastore.user"
-  member  = "serviceAccount:${google_service_account.langgraph_engine.email}"
+  member  = "serviceAccount:${google_service_account.api_gateway.email}"
 }
 
-resource "google_project_iam_member" "langgraph_pubsub_publisher" {
+resource "google_project_iam_member" "api_gateway_pubsub_publisher" {
   project = var.project_id
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_service_account.langgraph_engine.email}"
+  member  = "serviceAccount:${google_service_account.api_gateway.email}"
 }
 
-resource "google_project_iam_member" "langgraph_bigquery_user" {
+resource "google_project_iam_member" "api_gateway_bigquery_user" {
   project = var.project_id
   role    = "roles/bigquery.dataEditor"
-  member  = "serviceAccount:${google_service_account.langgraph_engine.email}"
+  member  = "serviceAccount:${google_service_account.api_gateway.email}"
 }
 
-resource "google_project_iam_member" "langgraph_aiplatform_user" {
+resource "google_project_iam_member" "api_gateway_aiplatform_user" {
   project = var.project_id
   role    = "roles/aiplatform.user"
-  member  = "serviceAccount:${google_service_account.langgraph_engine.email}"
+  member  = "serviceAccount:${google_service_account.api_gateway.email}"
 }
 
-resource "google_project_iam_member" "langgraph_storage_object_viewer" {
+resource "google_project_iam_member" "api_gateway_storage_object_viewer" {
   project = var.project_id
   role    = "roles/storage.objectViewer"
-  member  = "serviceAccount:${google_service_account.langgraph_engine.email}"
+  member  = "serviceAccount:${google_service_account.api_gateway.email}"
 }
 
 # Notification Worker — Firestore, Pub/Sub subscriber, Cloud Logging
@@ -100,7 +87,7 @@ resource "google_project_iam_member" "notification_worker_log_writer" {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Cloud Run v2 — api-gateway
+# Cloud Run v2 — api-gateway (ADK pipeline runs inline, no separate engine)
 # ──────────────────────────────────────────────────────────────────────────────
 
 resource "google_cloud_run_v2_service" "api_gateway" {
@@ -108,7 +95,7 @@ resource "google_cloud_run_v2_service" "api_gateway" {
   location = var.region
   project  = var.project_id
 
-  ingress = "INGRESS_TRAFFIC_ALL" # Public HTTPS entry point
+  ingress = "INGRESS_TRAFFIC_ALL"
 
   template {
     service_account = google_service_account.api_gateway.email
@@ -127,10 +114,10 @@ resource "google_cloud_run_v2_service" "api_gateway" {
 
       resources {
         limits = {
-          cpu    = "1"
-          memory = "512Mi"
+          cpu    = "2"
+          memory = "1Gi"
         }
-        cpu_idle = true
+        cpu_idle          = false
         startup_cpu_boost = true
       }
 
@@ -143,13 +130,30 @@ resource "google_cloud_run_v2_service" "api_gateway" {
         name  = "REGION"
         value = var.region
       }
+      env {
+        name  = "APP_MODE"
+        value = "production"
+      }
+      env {
+        name  = "RAG_CORPUS_ID"
+        value = var.rag_corpus_id
+      }
 
       # ── Secret Manager-backed env vars ─────────────────────────────────────
       env {
-        name = "JWT_SECRET_KEY"
+        name = "GOOGLE_MAPS_API_KEY"
         value_source {
           secret_key_ref {
-            secret  = "sampark-jwt-secret-key"
+            secret  = "sampark-google-maps-api-key"
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "WEATHER_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = "sampark-weather-api-key"
             version = "latest"
           }
         }
@@ -159,15 +163,6 @@ resource "google_cloud_run_v2_service" "api_gateway" {
         value_source {
           secret_key_ref {
             secret  = "sampark-firebase-credentials"
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name = "REDIS_URL"
-        value_source {
-          secret_key_ref {
-            secret  = "sampark-redis-url"
             version = "latest"
           }
         }
@@ -198,146 +193,20 @@ resource "google_cloud_run_v2_service" "api_gateway" {
   depends_on = [
     google_project_iam_member.api_gateway_secret_accessor,
     google_project_iam_member.api_gateway_log_writer,
+    google_project_iam_member.api_gateway_firestore_user,
+    google_project_iam_member.api_gateway_pubsub_publisher,
+    google_project_iam_member.api_gateway_bigquery_user,
+    google_project_iam_member.api_gateway_aiplatform_user,
   ]
 }
 
-# Allow unauthenticated public invocation for the API Gateway
+# Allow unauthenticated public invocation
 resource "google_cloud_run_v2_service_iam_member" "api_gateway_public" {
   project  = google_cloud_run_v2_service.api_gateway.project
   location = google_cloud_run_v2_service.api_gateway.location
   name     = google_cloud_run_v2_service.api_gateway.name
   role     = "roles/run.invoker"
   member   = "allUsers"
-}
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Cloud Run v2 — langgraph-engine
-# ──────────────────────────────────────────────────────────────────────────────
-
-resource "google_cloud_run_v2_service" "langgraph_engine" {
-  name     = "langgraph-engine"
-  location = var.region
-  project  = var.project_id
-
-  # Internal traffic only — invoked by api-gateway, not directly from the internet
-  ingress = "INGRESS_TRAFFIC_INTERNAL_ONLY"
-
-  template {
-    service_account = google_service_account.langgraph_engine.email
-
-    scaling {
-      min_instance_count = 1
-      max_instance_count = 10
-    }
-
-    # VPC connector for private access to Firestore (VPC-native) and Memorystore
-    vpc_access {
-      connector = var.vpc_connector
-      egress    = "PRIVATE_RANGES_ONLY"
-    }
-
-    containers {
-      image = "${var.artifact_registry}/sampark/langgraph-engine:latest"
-
-      ports {
-        container_port = 8081
-      }
-
-      resources {
-        limits = {
-          cpu    = "2"
-          memory = "2Gi"
-        }
-        cpu_idle          = false # Keep CPU allocated during request for long LangGraph runs
-        startup_cpu_boost = true
-      }
-
-      # ── Non-secret env vars ────────────────────────────────────────────────
-      env {
-        name  = "GOOGLE_CLOUD_PROJECT"
-        value = var.project_id
-      }
-      env {
-        name  = "REGION"
-        value = var.region
-      }
-
-      # ── Secret Manager-backed env vars ─────────────────────────────────────
-      env {
-        name = "VERTEX_AI_API_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = "sampark-vertex-ai-api-key"
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name = "GOOGLE_MAPS_API_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = "sampark-google-maps-api-key"
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name = "WEATHER_API_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = "sampark-weather-api-key"
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name = "FIRESTORE_DATABASE_ID"
-        value_source {
-          secret_key_ref {
-            secret  = "sampark-firestore-database-id"
-            version = "latest"
-          }
-        }
-      }
-
-      liveness_probe {
-        http_get {
-          path = "/health"
-          port = 8081
-        }
-        initial_delay_seconds = 15
-        period_seconds        = 30
-        failure_threshold     = 3
-      }
-
-      startup_probe {
-        http_get {
-          path = "/health"
-          port = 8081
-        }
-        initial_delay_seconds = 10
-        period_seconds        = 5
-        failure_threshold     = 15
-      }
-    }
-  }
-
-  depends_on = [
-    google_project_iam_member.langgraph_engine_secret_accessor,
-    google_project_iam_member.langgraph_firestore_user,
-    google_project_iam_member.langgraph_pubsub_publisher,
-    google_project_iam_member.langgraph_bigquery_user,
-    google_project_iam_member.langgraph_aiplatform_user,
-  ]
-}
-
-# Allow api-gateway service account to invoke langgraph-engine
-resource "google_cloud_run_v2_service_iam_member" "langgraph_engine_api_gateway_invoker" {
-  project  = google_cloud_run_v2_service.langgraph_engine.project
-  location = google_cloud_run_v2_service.langgraph_engine.location
-  name     = google_cloud_run_v2_service.langgraph_engine.name
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${google_service_account.api_gateway.email}"
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -349,14 +218,13 @@ resource "google_cloud_run_v2_service" "notification_worker" {
   location = var.region
   project  = var.project_id
 
-  # Receives Pub/Sub push deliveries — internal + load balancer
   ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
   template {
     service_account = google_service_account.notification_worker.email
 
     scaling {
-      min_instance_count = 0 # Scale to zero when no messages
+      min_instance_count = 0
       max_instance_count = 5
     }
 
@@ -372,7 +240,6 @@ resource "google_cloud_run_v2_service" "notification_worker" {
         startup_cpu_boost = true
       }
 
-      # ── Non-secret env vars ────────────────────────────────────────────────
       env {
         name  = "GOOGLE_CLOUD_PROJECT"
         value = var.project_id
@@ -382,7 +249,6 @@ resource "google_cloud_run_v2_service" "notification_worker" {
         value = var.region
       }
 
-      # ── Secret Manager-backed env vars ─────────────────────────────────────
       env {
         name = "TWILIO_ACCOUNT_SID"
         value_source {
@@ -439,16 +305,7 @@ resource "google_cloud_run_v2_service" "notification_worker" {
   ]
 }
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Pub/Sub push subscription — notification-worker trigger
-#
-# Pub/Sub pushes task-created and task-escalated messages to the worker's
-# /pubsub/push endpoint. The Pub/Sub service account must be allowed to invoke
-# the Cloud Run service.
-# ──────────────────────────────────────────────────────────────────────────────
-
-# Grant the Cloud Run invoker role to the Pub/Sub service account so it can
-# deliver push messages to notification-worker
+# Pub/Sub push subscription for notification-worker
 resource "google_cloud_run_v2_service_iam_member" "notification_worker_pubsub_invoker" {
   project  = google_cloud_run_v2_service.notification_worker.project
   location = google_cloud_run_v2_service.notification_worker.location
@@ -468,7 +325,6 @@ resource "google_pubsub_subscription" "task_created_push" {
 
   push_config {
     push_endpoint = "${google_cloud_run_v2_service.notification_worker.uri}/pubsub/push"
-
     oidc_token {
       service_account_email = google_service_account.notification_worker.email
       audience              = google_cloud_run_v2_service.notification_worker.uri
@@ -476,13 +332,11 @@ resource "google_pubsub_subscription" "task_created_push" {
   }
 
   ack_deadline_seconds       = 60
-  message_retention_duration = "86400s" # 24 hours
-
+  message_retention_duration = "86400s"
   retry_policy {
     minimum_backoff = "10s"
     maximum_backoff = "600s"
   }
-
   depends_on = [google_cloud_run_v2_service.notification_worker]
 }
 
@@ -493,7 +347,6 @@ resource "google_pubsub_subscription" "task_escalated_push" {
 
   push_config {
     push_endpoint = "${google_cloud_run_v2_service.notification_worker.uri}/pubsub/push"
-
     oidc_token {
       service_account_email = google_service_account.notification_worker.email
       audience              = google_cloud_run_v2_service.notification_worker.uri
@@ -502,27 +355,18 @@ resource "google_pubsub_subscription" "task_escalated_push" {
 
   ack_deadline_seconds       = 60
   message_retention_duration = "86400s"
-
   retry_policy {
     minimum_backoff = "10s"
     maximum_backoff = "600s"
   }
-
   depends_on = [google_cloud_run_v2_service.notification_worker]
 }
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Outputs
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Outputs ──────────────────────────────────────────────────────────
 
 output "api_gateway_url" {
   description = "Public URL of the API Gateway Cloud Run service"
   value       = google_cloud_run_v2_service.api_gateway.uri
-}
-
-output "langgraph_engine_url" {
-  description = "Internal URL of the LangGraph Engine Cloud Run service"
-  value       = google_cloud_run_v2_service.langgraph_engine.uri
 }
 
 output "notification_worker_url" {
@@ -533,11 +377,6 @@ output "notification_worker_url" {
 output "api_gateway_service_account" {
   description = "Service account email for the API Gateway"
   value       = google_service_account.api_gateway.email
-}
-
-output "langgraph_engine_service_account" {
-  description = "Service account email for the LangGraph Engine"
-  value       = google_service_account.langgraph_engine.email
 }
 
 output "notification_worker_service_account" {

@@ -12,21 +12,6 @@
 
 # ── api-gateway secrets ────────────────────────────────────────────────────────
 
-resource "google_secret_manager_secret" "jwt_secret_key" {
-  secret_id = "sampark-jwt-secret-key"
-  project   = var.project_id
-
-  labels = {
-    app       = "sampark"
-    service   = "api-gateway"
-    secret_type = "auth"
-  }
-
-  replication {
-    auto {}
-  }
-}
-
 resource "google_secret_manager_secret" "firebase_credentials" {
   secret_id = "sampark-firebase-credentials"
   project   = var.project_id
@@ -42,45 +27,13 @@ resource "google_secret_manager_secret" "firebase_credentials" {
   }
 }
 
-resource "google_secret_manager_secret" "redis_url" {
-  secret_id = "sampark-redis-url"
-  project   = var.project_id
-
-  labels = {
-    app         = "sampark"
-    service     = "api-gateway"
-    secret_type = "connection"
-  }
-
-  replication {
-    auto {}
-  }
-}
-
-# ── langgraph-engine secrets ───────────────────────────────────────────────────
-
-resource "google_secret_manager_secret" "vertex_ai_api_key" {
-  secret_id = "sampark-vertex-ai-api-key"
-  project   = var.project_id
-
-  labels = {
-    app         = "sampark"
-    service     = "langgraph-engine"
-    secret_type = "api-key"
-  }
-
-  replication {
-    auto {}
-  }
-}
-
 resource "google_secret_manager_secret" "google_maps_api_key" {
   secret_id = "sampark-google-maps-api-key"
   project   = var.project_id
 
   labels = {
     app         = "sampark"
-    service     = "langgraph-engine"
+    service     = "api-gateway"
     secret_type = "api-key"
   }
 
@@ -95,23 +48,8 @@ resource "google_secret_manager_secret" "weather_api_key" {
 
   labels = {
     app         = "sampark"
-    service     = "langgraph-engine"
+    service     = "api-gateway"
     secret_type = "api-key"
-  }
-
-  replication {
-    auto {}
-  }
-}
-
-resource "google_secret_manager_secret" "firestore_database_id" {
-  secret_id = "sampark-firestore-database-id"
-  project   = var.project_id
-
-  labels = {
-    app         = "sampark"
-    service     = "langgraph-engine"
-    secret_type = "config"
   }
 
   replication {
@@ -182,27 +120,12 @@ resource "google_secret_manager_secret" "fcm_server_key" {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Outputs — Secret resource IDs for reference in other modules
+# Outputs
 # ──────────────────────────────────────────────────────────────────────────────
-
-output "secret_jwt_secret_key_id" {
-  description = "Resource ID of the JWT secret key secret"
-  value       = google_secret_manager_secret.jwt_secret_key.id
-}
 
 output "secret_firebase_credentials_id" {
   description = "Resource ID of the Firebase credentials secret"
   value       = google_secret_manager_secret.firebase_credentials.id
-}
-
-output "secret_redis_url_id" {
-  description = "Resource ID of the Redis URL secret"
-  value       = google_secret_manager_secret.redis_url.id
-}
-
-output "secret_vertex_ai_api_key_id" {
-  description = "Resource ID of the Vertex AI API key secret"
-  value       = google_secret_manager_secret.vertex_ai_api_key.id
 }
 
 output "secret_google_maps_api_key_id" {
@@ -213,11 +136,6 @@ output "secret_google_maps_api_key_id" {
 output "secret_weather_api_key_id" {
   description = "Resource ID of the Weather API key secret"
   value       = google_secret_manager_secret.weather_api_key.id
-}
-
-output "secret_firestore_database_id_id" {
-  description = "Resource ID of the Firestore database ID secret"
-  value       = google_secret_manager_secret.firestore_database_id.id
 }
 
 output "secret_twilio_account_sid_id" {

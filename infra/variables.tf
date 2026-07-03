@@ -20,8 +20,8 @@ variable "vpc_connector" {
   default     = ""
 }
 
-variable "notification_worker_pubsub_audience" {
-  description = "Pub/Sub push subscription audience URL for notification-worker (Cloud Run service URL)"
+variable "rag_corpus_id" {
+  description = "Vertex AI RAG Engine corpus ID for policy document retrieval"
   type        = string
   default     = ""
 }
