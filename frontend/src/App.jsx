@@ -1,0 +1,760 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { api } from './api';
+import { 
+  Building2, 
+  MapPin, 
+  AlertTriangle, 
+  BookOpen, 
+  LogOut, 
+  Send, 
+  CheckCircle2, 
+  Loader2, 
+  FileText, 
+  Trash2, 
+  Upload, 
+  Activity, 
+  AlertCircle, 
+  RefreshCw,
+  Sparkles,
+  Search
+} from 'lucide-react';
+
+export default function App() {
+  const [user, setUser] = useState(api.getUser());
+  const [activeTab, setActiveTab] = useState('report'); // report | dashboard | kb
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Login form state
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
+  // Citizen Report form state
+  const [description, setDescription] = useState('');
+  const [wardId, setWardId] = useState('w1');
+  const [lat, setLat] = useState('18.5204');
+  const [lng, setLng] = useState('73.8567');
+  const [imageUrl, setImageUrl] = useState('');
+  
+  // Pipeline streaming state
+  const [pipelineSessionId, setPipelineSessionId] = useState(null);
+  const [pipelineSteps, setPipelineSteps] = useState([]);
+  const [pipelineResult, setPipelineResult] = useState(null);
+  const [streamActive, setStreamActive] = useState(false);
+
+  // Dashboard state
+  const [dashboardData, setDashboardData] = useState({
+    health_score: 82.5,
+    heatmap: [],
+    trend_7d: [],
+    top_critical_issues: []
+  });
+  const [dashboardStreamConnected, setDashboardStreamConnected] = useState(false);
+  const [dashboardNotifications, setDashboardNotifications] = useState([]);
+
+  // Knowledge base state
+  const [kbDocs, setKbDocs] = useState([]);
+  const [kbUploading, setKbUploading] = useState(false);
+  const [kbFile, setKbFile] = useState(null);
+
+  useEffect(() => {
+    // If logged in, set active tab based on role
+    if (user) {
+      if (user.role === 'government_officer') {
+        setActiveTab('dashboard');
+      } else {
+        setActiveTab('report');
+      }
+    }
+  }, [user]);
+
+  // Handle dashboard fetching and SSE stream
+  useEffect(() => {
+    if (!user || activeTab !== 'dashboard') return;
+
+    fetchDashboard();
+
+    // Setup dashboard stream
+    const url = api.getStreamUrl('/analytics/dashboard/stream');
+    let sse;
+    try {
+      sse = new EventSource(url);
+      setDashboardStreamConnected(true);
+
+      sse.onmessage = (event) => {
+        const updatedTask = JSON.parse(event.data);
+        // Push notification
+        setDashboardNotifications(prev => [
+          {
+            id: Math.random().toString(36).substring(7),
+            message: `Task ${updatedTask.task_id} in Ward ${updatedTask.ward_id} status updated to ${updatedTask.status}`,
+            timestamp: new Date().toLocaleTimeString()
+          },
+          ...prev.slice(0, 4)
+        ]);
+        
+        // Refresh dashboard data
+        fetchDashboard();
+      };
+
+      sse.onerror = () => {
+        setDashboardStreamConnected(false);
+      };
+    } catch (err) {
+      console.error(err);
+    }
+
+    return () => {
+      if (sse) sse.close();
+      setDashboardStreamConnected(false);
+    };
+  }, [user, activeTab]);
+
+  // Handle KB listing
+  useEffect(() => {
+    if (!user || activeTab !== 'kb') return;
+    fetchKbDocs();
+  }, [user, activeTab]);
+
+  const fetchDashboard = async () => {
+    try {
+      const data = await api.getDashboard();
+      setDashboardData(data);
+    } catch (err) {
+      console.error('Failed to fetch dashboard data', err);
+    }
+  };
+
+  const fetchKbDocs = async () => {
+    try {
+      const data = await api.listDocuments();
+      setKbDocs(data);
+    } catch (err) {
+      console.error('Failed to fetch KB docs', err);
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const loggedUser = await api.login(username, password);
+      setUser(loggedUser);
+    } catch (err) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    api.logout();
+    setUser(null);
+  };
+
+  const handleIssueSubmit = async (e) => {
+    e.preventDefault();
+    if (description.length < 10) {
+      setError('Description must be at least 10 characters long');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setPipelineResult(null);
+    setPipelineSteps([]);
+    
+    // Generate a unique session ID
+    const sessionId = `sess_${Math.random().toString(36).substring(7)}`;
+    setPipelineSessionId(sessionId);
+    setStreamActive(true);
+
+    // Open EventSource stream for progress before making the post request
+    const streamUrl = api.getStreamUrl(`/chat/stream/${sessionId}`);
+    const sse = new EventSource(streamUrl);
+
+    sse.onmessage = (event) => {
+      const message = event.data;
+      if (message === 'Done') {
+        sse.close();
+        setStreamActive(false);
+      } else {
+        setPipelineSteps(prev => [...prev, message]);
+      }
+    };
+
+    sse.onerror = () => {
+      sse.close();
+      setStreamActive(false);
+    };
+
+    try {
+      // POST the issue
+      const result = await api.reportIssue(description, wardId, lat, lng, sessionId, imageUrl || null);
+      setPipelineResult(result);
+      // Clear form
+      setDescription('');
+      setImageUrl('');
+    } catch (err) {
+      setError(err.message || 'Submission failed');
+      sse.close();
+      setStreamActive(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    e.preventDefault();
+    if (!kbFile) return;
+    setKbUploading(true);
+    setError(null);
+    try {
+      await api.uploadDocument(kbFile);
+      setKbFile(null);
+      // Reset input element
+      document.getElementById('kb-file-input').value = '';
+      fetchKbDocs();
+    } catch (err) {
+      setError(err.message || 'File upload failed');
+    } finally {
+      setKbUploading(false);
+    }
+  };
+
+  const handleDocDelete = async (docId) => {
+    if (!confirm(`Are you sure you want to delete ${docId}?`)) return;
+    try {
+      await api.deleteDocument(docId);
+      fetchKbDocs();
+    } catch (err) {
+      alert(err.message || 'Delete failed');
+    }
+  };
+
+  const isAdmin = user && (user.role === 'government_officer' || user.ward_ids.includes('*'));
+
+  // RENDER LOGIN SCREEN
+  if (!user) {
+    return (
+      <div className="login-container">
+        <div className="glass-panel login-card">
+          <div className="login-header">
+            <div className="brand-logo" style={{ fontSize: '48px', marginBottom: '16px' }}>🇮🇳</div>
+            <h2 className="brand-name">SAMPARK AI</h2>
+            <p style={{ color: 'var(--text-secondary)' }}>Community Decision Intelligence Platform</p>
+          </div>
+
+          {error && <div className="alert alert-error">{error}</div>}
+
+          <form onSubmit={handleLogin}>
+            <div className="form-group">
+              <label className="form-label">Username</label>
+              <input 
+                type="text" 
+                className="input-field" 
+                placeholder="admin or leader_w1" 
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">Password</label>
+              <input 
+                type="password" 
+                className="input-field" 
+                placeholder="••••••••" 
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '12px' }} disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="spinner" style={{ marginRight: '8px' }} />
+                  Authenticating...
+                </>
+              ) : 'Sign In'}
+            </button>
+          </form>
+
+          <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '13px', color: 'var(--text-secondary)' }}>
+            <p>Demo credentials:</p>
+            <p style={{ fontFamily: 'monospace', marginTop: '4px' }}>admin / password (Officer/Admin)</p>
+            <p style={{ fontFamily: 'monospace' }}>leader_w1 / password (Community Leader)</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // RENDER APP PORTAL
+  return (
+    <div className="layout-wrapper">
+      {/* SIDEBAR */}
+      <aside className="sidebar">
+        <div>
+          <div className="brand-section">
+            <span className="brand-logo">🇮🇳</span>
+            <span className="brand-name">Sampark AI</span>
+          </div>
+
+          <nav>
+            <ul className="menu-list">
+              <li 
+                className={`menu-item ${activeTab === 'report' ? 'active' : ''}`}
+                onClick={() => { setActiveTab('report'); setError(null); }}
+              >
+                <Send size={18} />
+                Report Issue
+              </li>
+              
+              <li 
+                className={`menu-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+                onClick={() => { setActiveTab('dashboard'); setError(null); }}
+              >
+                <Activity size={18} />
+                Dashboard
+              </li>
+
+              {isAdmin && (
+                <li 
+                  className={`menu-item ${activeTab === 'kb' ? 'active' : ''}`}
+                  onClick={() => { setActiveTab('kb'); setError(null); }}
+                >
+                  <BookOpen size={18} />
+                  Knowledge Base
+                </li>
+              )}
+            </ul>
+          </nav>
+        </div>
+
+        <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="user-profile">
+            <div className="profile-avatar">
+              {user.username ? user.username[0].toUpperCase() : 'U'}
+            </div>
+            <div className="profile-info">
+              <h4>{user.username || 'Demo User'}</h4>
+              <span>{user.role === 'government_officer' ? 'Govt Officer' : 'Community Leader'}</span>
+            </div>
+          </div>
+          
+          <button onClick={handleLogout} className="btn btn-secondary" style={{ width: '100%' }}>
+            <LogOut size={16} />
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT AREA */}
+      <main className="main-content">
+        <header className="header-container">
+          <div>
+            <h1 className="page-title">
+              {activeTab === 'report' && 'Citizen Intake Portal'}
+              {activeTab === 'dashboard' && 'Decision Intelligence Dashboard'}
+              {activeTab === 'kb' && 'Knowledge Base Administration'}
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>
+              {activeTab === 'report' && 'Submit community complaints for automated multi-agent routing.'}
+              {activeTab === 'dashboard' && `Geospatial risks and predictive analytics for Ward scope: ${user.ward_ids.join(', ')}`}
+              {activeTab === 'kb' && 'Manage policy acts and municipal guidelines that ground recommendations.'}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {activeTab === 'dashboard' && (
+              <button onClick={fetchDashboard} className="btn btn-secondary">
+                <RefreshCw size={15} />
+                Refresh
+              </button>
+            )}
+            <span className="badge badge-medium" style={{ display: 'flex', alignItems: 'center', height: 'fit-content' }}>
+              {user.role}
+            </span>
+          </div>
+        </header>
+
+        {error && <div className="alert alert-error" style={{ marginBottom: '32px' }}>{error}</div>}
+
+        {/* TAB 1: REPORT ISSUE */}
+        {activeTab === 'report' && (
+          <div style={{ maxWidth: '800px' }}>
+            <div className="glass-panel">
+              <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '20px' }}>File a Complaint</h3>
+              
+              <form onSubmit={handleIssueSubmit}>
+                <div className="form-group">
+                  <label className="form-label">Issue Description</label>
+                  <textarea 
+                    className="input-field" 
+                    rows="4" 
+                    placeholder="Describe the community issue in detail (minimum 10 characters)... E.g., Major water leak on MG Road corner."
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Ward ID</label>
+                    <select 
+                      className="input-field"
+                      value={wardId}
+                      onChange={e => setWardId(e.target.value)}
+                    >
+                      <option value="w1">Ward 1 (w1)</option>
+                      <option value="w2">Ward 2 (w2)</option>
+                      <option value="w3">Ward 3 (w3)</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Latitude</label>
+                    <input 
+                      type="text" 
+                      className="input-field"
+                      value={lat}
+                      onChange={e => setLat(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Longitude</label>
+                    <input 
+                      type="text" 
+                      className="input-field"
+                      value={lng}
+                      onChange={e => setLng(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Evidence Image URL (Optional)</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="http://example.com/pothole.jpg"
+                    value={imageUrl}
+                    onChange={e => setImageUrl(e.target.value)}
+                  />
+                </div>
+
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '12px' }} disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="spinner" style={{ marginRight: '8px' }} />
+                      Invoking LangGraph...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={16} />
+                      Submit to Decision Engine
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+
+            {/* REAL-TIME PROGRESS SSE STREAM */}
+            {(streamActive || pipelineSteps.length > 0) && (
+              <div className="glass-panel progress-container">
+                <div className="progress-header">
+                  {streamActive && <div className="spinner" />}
+                  <h4 style={{ fontWeight: '700' }}>
+                    {streamActive ? 'Agent Pipeline Processing...' : 'Agent Execution History'}
+                  </h4>
+                </div>
+                
+                <div className="step-list">
+                  {pipelineSteps.map((step, idx) => (
+                    <div key={idx} className="step-item completed">
+                      <div className="step-bullet" />
+                      <span>{step}</span>
+                    </div>
+                  ))}
+                  {streamActive && (
+                    <div className="step-item">
+                      <div className="step-bullet" style={{ animation: 'pulse 1s infinite' }} />
+                      <span style={{ fontStyle: 'italic' }}>Waiting for next agent checkpoint...</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* PIPELINE RESPONSE PAYLOAD RESULT CARD */}
+            {pipelineResult && (
+              <div className="glass-panel result-card">
+                <div className="result-header">
+                  <CheckCircle2 size={20} />
+                  <span>Issue Processed Successfully</span>
+                </div>
+
+                <div className="result-detail-grid">
+                  <div>
+                    <div className="result-label">Session ID</div>
+                    <div className="result-value" style={{ fontFamily: 'monospace' }}>{pipelineResult.session_id}</div>
+                  </div>
+                  <div>
+                    <div className="result-label">Issue ID</div>
+                    <div className="result-value" style={{ fontFamily: 'monospace' }}>{pipelineResult.issue_id}</div>
+                  </div>
+                  <div>
+                    <div className="result-label">Task ID</div>
+                    <div className="result-value" style={{ fontFamily: 'monospace' }}>{pipelineResult.task_id}</div>
+                  </div>
+                  <div>
+                    <div className="result-label">Issue Category</div>
+                    <div className="result-value" style={{ textTransform: 'capitalize' }}>{pipelineResult.issue_type}</div>
+                  </div>
+                  <div>
+                    <div className="result-label">Assigned Department</div>
+                    <div className="result-value" style={{ color: 'var(--primary-color)' }}>{pipelineResult.department}</div>
+                  </div>
+                  <div>
+                    <div className="result-label">Priority Level</div>
+                    <div className="result-value">
+                      <span className={`badge badge-${(pipelineResult.priority || 'low').toLowerCase()}`}>
+                        {pipelineResult.priority}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="result-label">Validation Confidence</div>
+                    <div className="result-value">
+                      <span className="badge badge-medium" style={{ background: pipelineResult.confidence >= 0.5 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: pipelineResult.confidence >= 0.5 ? '#34d399' : '#f87171' }}>
+                        {(pipelineResult.confidence * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <div className="result-label">Recommended Action</div>
+                  <div className="result-value" style={{ color: 'var(--warning-color)', fontStyle: 'italic' }}>
+                    "{pipelineResult.next_action}"
+                  </div>
+                </div>
+
+                <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <div className="result-label">Citizen-facing Message</div>
+                  <p style={{ fontSize: '15px', fontWeight: '500' }}>{pipelineResult.message}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: OFFICER DASHBOARD */}
+        {activeTab === 'dashboard' && (
+          <div>
+            {/* Real-time Status Connection Badge */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
+              <span className={`step-bullet`} style={{ 
+                background: dashboardStreamConnected ? 'var(--success-color)' : 'var(--error-color)',
+                boxShadow: dashboardStreamConnected ? '0 0 8px var(--success-color)' : 'none',
+                width: '10px', height: '10px'
+              }} />
+              <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                {dashboardStreamConnected ? 'Real-time task stream connected' : 'Stream disconnected'}
+              </span>
+            </div>
+
+            {/* Dashboard Notifications Banner */}
+            {dashboardNotifications.length > 0 && (
+              <div style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {dashboardNotifications.map(notif => (
+                  <div key={notif.id} className="alert" style={{ background: 'rgba(99, 102, 241, 0.15)', borderColor: 'rgba(99, 102, 241, 0.25)', color: '#a5b4fc', display: 'flex', justifyContent: 'space-between', fontSize: '14px', margin: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Sparkles size={16} />
+                      <span>{notif.message}</span>
+                    </div>
+                    <span style={{ opacity: 0.7, fontSize: '12px' }}>{notif.timestamp}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Metrics summary cards */}
+            <div className="summary-grid">
+              <div className="glass-panel metric-card">
+                <div className="metric-icon">
+                  <Activity />
+                </div>
+                <div className="metric-data">
+                  <h3>{dashboardData.health_score.toFixed(1)} / 100</h3>
+                  <p>Community Health Score</p>
+                </div>
+              </div>
+              
+              <div className="glass-panel metric-card">
+                <div className="metric-icon" style={{ color: 'var(--error-color)', background: 'rgba(239, 68, 68, 0.1)' }}>
+                  <AlertTriangle />
+                </div>
+                <div className="metric-data">
+                  <h3>{dashboardData.top_critical_issues.length}</h3>
+                  <p>Critical Open Tasks</p>
+                </div>
+              </div>
+
+              <div className="glass-panel metric-card">
+                <div className="metric-icon" style={{ color: 'var(--success-color)', background: 'rgba(16, 185, 129, 0.1)' }}>
+                  <Building2 />
+                </div>
+                <div className="metric-data">
+                  <h3>{user.ward_ids.includes('*') ? 'All Wards' : `${user.ward_ids.length} Wards`}</h3>
+                  <p>Assigned Municipal Jurisdictions</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="dashboard-grid">
+              {/* Risks Heatmap visual list */}
+              <div className="glass-panel">
+                <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '20px' }}>Geospatial Risk Levels</h3>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '10px 0' }}>
+                  {dashboardData.heatmap.map((w, idx) => (
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: '600' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <MapPin size={16} />
+                          Ward ID: {w.ward_id.toUpperCase()}
+                        </span>
+                        <span>{(w.risk * 100).toFixed(0)}% Risk Score</span>
+                      </div>
+                      <div style={{ width: '100%', height: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '99px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                        <div style={{ 
+                          width: `${w.risk * 100}%`, 
+                          height: '100%', 
+                          background: w.risk > 0.7 ? 'var(--error-color)' : (w.risk > 0.4 ? 'var(--warning-color)' : 'var(--success-color)'),
+                          boxShadow: `0 0 10px ${w.risk > 0.7 ? 'rgba(239,68,68,0.5)' : 'rgba(16,185,129,0.3)'}`
+                        }} />
+                      </div>
+                    </div>
+                  ))}
+                  {dashboardData.heatmap.length === 0 && (
+                    <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>No ward scope risks computed.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Critical/High Issues List */}
+              <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '20px' }}>Critical Action List</h3>
+                
+                <div className="critical-list" style={{ flexGrow: 1 }}>
+                  {dashboardData.top_critical_issues.map((issue, idx) => (
+                    <div key={idx} className="critical-item">
+                      <div>
+                        <h5 style={{ fontWeight: '700', fontSize: '14px', marginBottom: '4px' }}>
+                          {issue.desc.length > 40 ? `${issue.desc.substring(0, 40)}...` : issue.desc}
+                        </h5>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          Ward: {issue.ward_id.toUpperCase()} | Dept: {issue.department}
+                        </p>
+                      </div>
+                      
+                      <span className={`badge badge-${(issue.priority || 'high').toLowerCase()}`}>
+                        {issue.priority || 'HIGH'}
+                      </span>
+                    </div>
+                  ))}
+
+                  {dashboardData.top_critical_issues.length === 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
+                      <AlertCircle size={32} style={{ marginBottom: '8px' }} />
+                      <p style={{ fontSize: '14px' }}>No critical issues reported.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: KNOWLEDGE BASE */}
+        {activeTab === 'kb' && isAdmin && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+            {/* Upload PDF Column */}
+            <div className="glass-panel" style={{ height: 'fit-content' }}>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '20px' }}>Upload Document</h3>
+              
+              <form onSubmit={handleFileUpload}>
+                <div className="form-group">
+                  <label className="form-label">Select PDF Policy Act</label>
+                  <div style={{ border: '2px dashed var(--border-color)', borderRadius: '12px', padding: '24px', textAlign: 'center', position: 'relative', cursor: 'pointer', background: 'rgba(255,255,255,0.01)' }}>
+                    <Upload size={32} style={{ margin: '0 auto 12px auto', color: 'var(--text-secondary)' }} />
+                    <p style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-secondary)' }}>
+                      {kbFile ? kbFile.name : 'Choose a PDF file...'}
+                    </p>
+                    <input 
+                      type="file" 
+                      id="kb-file-input"
+                      accept=".pdf"
+                      style={{ opacity: 0, position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'pointer' }}
+                      onChange={e => setKbFile(e.target.files[0])}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '12px' }} disabled={kbUploading || !kbFile}>
+                  {kbUploading ? (
+                    <>
+                      <Loader2 className="spinner" style={{ marginRight: '8px' }} />
+                      Ingesting Document...
+                    </>
+                  ) : 'Upload & Embed (768-dim)'}
+                </button>
+              </form>
+            </div>
+
+            {/* List Documents Column */}
+            <div className="glass-panel">
+              <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '20px' }}>Embedded Policy Documents</h3>
+              
+              <div className="kb-grid">
+                {kbDocs.map((doc, idx) => (
+                  <div key={idx} className="kb-card">
+                    <div className="kb-card-info" style={{ overflow: 'hidden' }}>
+                      <h5 title={doc.name}>
+                        {doc.name}
+                      </h5>
+                      <span className="badge badge-low" style={{ display: 'inline-block', marginTop: '4px' }}>
+                        {doc.status}
+                      </span>
+                    </div>
+                    
+                    <button onClick={() => handleDocDelete(doc.document_id)} className="delete-btn">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+
+                {kbDocs.length === 0 && (
+                  <div style={{ gridColumn: '1 / -1', padding: '48px 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <FileText size={48} style={{ margin: '0 auto 12px auto', opacity: 0.5 }} />
+                    <p style={{ fontSize: '15px' }}>No policy documents embedded yet.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

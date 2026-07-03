@@ -47,8 +47,8 @@ class AuthAndRateLimitMiddleware(BaseHTTPMiddleware):
     """13.2 JWT Auth and 13.3 Rate Limiting, 13.6 RBAC."""
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        # Skip auth for public endpoints
-        if request.url.path in ("/health", "/auth/login", "/docs", "/openapi.json"):
+        # Skip auth for public endpoints and EventSource streams
+        if request.url.path in ("/health", "/auth/login", "/docs", "/openapi.json") or request.url.path.startswith("/chat/stream/") or request.url.path.startswith("/analytics/dashboard/stream"):
             return await call_next(request)
             
         auth_header = request.headers.get("Authorization")

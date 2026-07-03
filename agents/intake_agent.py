@@ -235,8 +235,11 @@ def make_intake_node(
                 if media_ref:
                     media_refs.append(media_ref)
 
+                existing_issue = state.get("issue") or {}
+                issue_id_to_use = existing_issue.get("id") or f"iss_{uuid.uuid4().hex[:8]}"
+
                 issue: IssueObject = {
-                    "id": f"iss_{uuid.uuid4().hex[:8]}",
+                    "id": issue_id_to_use,
                     "type": canonical_type,
                     "location": location,
                     "description": description,

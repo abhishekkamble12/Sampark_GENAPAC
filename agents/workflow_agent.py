@@ -107,12 +107,28 @@ def make_workflow_node(
             "department": dept
         }
         try:
-            await pubsub_client.publish("task-created", event_payload)
+            from backend.config import settings
+            import json
+            # Check if this is the mock pubsub client
+            if hasattr(pubsub_client, "__class__") and pubsub_client.__class__.__name__ == "MockPubSubClient":
+                await pubsub_client.publish("task-created", event_payload)
+            else:
+                # Production google-cloud-pubsub Client
+                topic_path = pubsub_client.topic_path(settings.GCP_PROJECT_ID, settings.PUBSUB_TOPIC_TASK_CREATED)
+                data_bytes = json.dumps(event_payload).encode("utf-8")
+                loop = asyncio.get_running_loop()
+                future = await loop.run_in_executor(
+                    None,
+                    lambda: pubsub_client.publish(topic_path, data_bytes)
+                )
+                # Wait for pubsub to finish publishing
+                await loop.run_in_executor(None, future.result)
         except Exception:
             # 11.7 Log failure for manual replay
             logger.error(
                 "PubSub publish failed for topic=task-created task_id=%s issue_id=%s",
-                task_id, issue_id
+                task_id, issue_id,
+                exc_info=True
             )
             # We don't set workflow_error=True here per tasks.md (only double FS failure does that)
             # The task exists in Firestore, just notification failed.

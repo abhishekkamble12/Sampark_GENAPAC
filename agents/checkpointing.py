@@ -87,6 +87,23 @@ class FirestoreCheckpointSaver:
             "state_snapshot": dict(state),
             "completed_at": now,
         }
+        if self._db is None:
+            from tools.firestore_tool import FirestoreTool
+            prefix = self._prefix
+            if prefix not in FirestoreTool._local_db:
+                FirestoreTool._local_db[prefix] = {}
+            if session_id not in FirestoreTool._local_db[prefix]:
+                FirestoreTool._local_db[prefix][session_id] = {}
+            if "checkpoints" not in FirestoreTool._local_db[prefix][session_id]:
+                FirestoreTool._local_db[prefix][session_id]["checkpoints"] = {}
+                
+            FirestoreTool._local_db[prefix][session_id]["checkpoints"][node_name] = checkpoint_data
+            FirestoreTool._local_db[prefix][session_id]["last_checkpoint"] = node_name
+            FirestoreTool._local_db[prefix][session_id]["updated_at"] = now
+            FirestoreTool._local_db[prefix][session_id]["status"] = state.get("execution", {}).get("status", "running")
+            logger.debug("Local checkpoint saved: session=%s node=%s", session_id, node_name)
+            return
+
         try:
             # Write checkpoint document
             await self._checkpoint_ref(session_id, node_name).set(checkpoint_data)
@@ -124,6 +141,13 @@ class FirestoreCheckpointSaver:
         GraphState or None
             Deserialised state dict, or ``None`` if no checkpoint exists.
         """
+        if self._db is None:
+            from tools.firestore_tool import FirestoreTool
+            prefix = self._prefix
+            session = FirestoreTool._local_db.get(prefix, {}).get(session_id, {})
+            checkpoint = session.get("checkpoints", {}).get(node_name)
+            return checkpoint.get("state_snapshot") if checkpoint else None
+
         try:
             doc = await self._checkpoint_ref(session_id, node_name).get()
             if not doc.exists:
@@ -154,6 +178,12 @@ class FirestoreCheckpointSaver:
             Ordered list of node names (Firestore document IDs) for which a
             checkpoint document exists under this session.
         """
+        if self._db is None:
+            from tools.firestore_tool import FirestoreTool
+            prefix = self._prefix
+            session = FirestoreTool._local_db.get(prefix, {}).get(session_id, {})
+            return list(session.get("checkpoints", {}).keys())
+
         try:
             docs = (
                 self._db.collection(self._prefix)
