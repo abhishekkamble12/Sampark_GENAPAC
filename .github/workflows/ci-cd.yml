@@ -74,26 +74,11 @@ jobs:
           docker push ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/api-gateway:${{ github.sha }}
           docker push ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/api-gateway:latest
 
-      # ── langgraph-engine ───────────────────────────────────────────────────
-      - name: Build langgraph-engine image
-        run: |
-          docker build \
-            --file langgraph/Dockerfile \
-            --tag ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/langgraph-engine:${{ github.sha }} \
-            --tag ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/langgraph-engine:latest \
-            .
-
-      - name: Push langgraph-engine image
-        run: |
-          docker push ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/langgraph-engine:${{ github.sha }}
-          docker push ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/langgraph-engine:latest
-
       # ── notification-worker ────────────────────────────────────────────────
-      # Shares the langgraph/Dockerfile base; CMD is overridden at Cloud Run deploy time.
       - name: Build notification-worker image
         run: |
           docker build \
-            --file langgraph/Dockerfile \
+            --file backend/Dockerfile \
             --tag ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/notification-worker:${{ github.sha }} \
             --tag ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/notification-worker:latest \
             .
@@ -132,13 +117,7 @@ jobs:
             --project ${{ secrets.GCP_PROJECT_ID }} \
             --quiet
 
-      - name: Deploy langgraph-engine to Cloud Run
-        run: |
-          gcloud run deploy langgraph-engine \
-            --image ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/langgraph-engine:${{ github.sha }} \
-            --region ${{ vars.GCP_REGION }} \
-            --project ${{ secrets.GCP_PROJECT_ID }} \
-            --quiet
+      # langgraph-engine removed: ADK pipeline runs inline in api-gateway
 
       - name: Deploy notification-worker to Cloud Run
         run: |
