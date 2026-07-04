@@ -22,8 +22,23 @@ class Retriever:
         Returns:
             Tuple of (chunks_list, no_policy_context_flag).
         """
-        # 9.7 Embed query and ANN search
         try:
+            from backend.config import settings
+            if settings.APP_MODE == "local":
+                q_lower = query.lower()
+                if "flood" in q_lower or "drain" in q_lower:
+                    doc_name, chunk_idx = "urban_flood_guidelines", 0
+                elif "water" in q_lower or "leak" in q_lower:
+                    doc_name, chunk_idx = "water_leakage_protocol", 0
+                else:
+                    doc_name, chunk_idx = "road_maintenance_policy", 0
+                
+                metadata = await self.firestore.get_chunk_metadata(doc_name, chunk_idx)
+                if metadata:
+                    return [metadata], False
+                return [], True
+
+            # 9.7 Embed query and ANN search
             query_embedding = (await self.vertex.get_embeddings([query]))[0]
             
             # search_vectors returns list of {"id": str, "score": float}

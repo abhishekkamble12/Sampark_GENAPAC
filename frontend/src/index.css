@@ -1,7 +1,7 @@
 /* Custom variables and tokens for the Premium Design System */
 :root {
   --bg-color: #0b0f19;
-  --panel-bg: rgba(22, 30, 49, 0.6);
+  --panel-bg: #111827; /* More solid premium dark */
   --border-color: rgba(255, 255, 255, 0.08);
   --text-primary: #f3f4f6;
   --text-secondary: #9ca3af;
@@ -47,7 +47,7 @@ body {
 /* Glassmorphism Container Card */
 .glass-panel {
   background: var(--panel-bg);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(8px);
   border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 24px;
@@ -525,4 +525,218 @@ body {
 .result-value {
   font-size: 16px;
   font-weight: 600;
+}
+
+/* AI Decision Trace Styles */
+.trace-container {
+  margin-top: 32px;
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px dashed rgba(99, 102, 241, 0.3);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.trace-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #a5b4fc;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.trace-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.trace-agent-card {
+  background: rgba(22, 30, 49, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 18px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.trace-agent-card:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(22, 30, 49, 0.5);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.05);
+}
+
+.trace-agent-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 8px;
+}
+
+.trace-agent-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+}
+
+.trace-agent-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.trace-agent-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  margin-left: auto;
+}
+
+.trace-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.trace-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trace-item-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.trace-item-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+/* Dashboard Layout Phase 4 */
+.dashboard-v2-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-v2-grid {
+    grid-template-columns: 3fr 1fr;
+  }
+}
+
+.dashboard-v2-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.dashboard-v2-side {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.health-trend {
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.health-trend.up {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+}
+.health-trend.down {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.insight-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+.insight-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+.insight-icon {
+  color: #10b981;
+  flex-shrink: 0;
+}
+.insight-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+/* Responsive Media Queries Phase 5 */
+@media (max-width: 768px) {
+  .layout-wrapper {
+    grid-template-columns: 1fr;
+  }
+  
+  .sidebar {
+    padding: 16px;
+    flex-direction: row;
+    overflow-x: auto;
+    align-items: center;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .brand-section {
+    margin-bottom: 0;
+    margin-right: 24px;
+  }
+  
+  .menu-list {
+    flex-direction: row;
+    gap: 8px;
+  }
+  
+  .user-profile {
+    display: none;
+  }
+
+  .main-content {
+    padding: 20px;
+  }
+
+  .dashboard-grid, .summary-grid {
+    grid-template-columns: 1fr;
+  }
 }

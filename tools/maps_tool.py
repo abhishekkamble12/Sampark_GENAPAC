@@ -44,6 +44,10 @@ class MapsTool:
             no results.  ``ward_id`` is extracted from address components
             if available, otherwise set to ``None``.
         """
+        from backend.config import settings
+        if not self._api_key or settings.APP_MODE == "local":
+            return {"lat": 18.5204, "lng": 73.8567, "address": "MG Road, Ward 1", "ward_id": "w1"}
+
         try:
             async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
                 resp = await client.get(
@@ -97,6 +101,14 @@ class MapsTool:
             ``road_classification`` (string or None), and
             ``nearby_facilities`` (list of strings).
         """
+        from backend.config import settings
+        if not self._api_key or settings.APP_MODE == "local":
+            return {
+                "traffic_density": "high",
+                "road_classification": "urban",
+                "nearby_facilities": ["MG Road School (school)", "MG Road Market (store)"],
+            }
+
         default: dict[str, Any] = {
             "traffic_density": None,
             "road_classification": None,

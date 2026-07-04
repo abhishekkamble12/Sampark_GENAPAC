@@ -156,6 +156,41 @@ async def startup_event():
         }
         FirestoreTool._local_db["tasks"] = tasks
 
+
+        # Seed knowledge base policies
+        FirestoreTool._local_db["knowledge_base"] = {
+            "road_repair_act_0": {
+                "doc_name": "Road Repair Act",
+                "chunk_index": 0,
+                "page_number": 1,
+                "section": "Section 1.0",
+                "text": "Potholes on major roads like MG Road must be repaired by the Public Works Department within 48 hours to prevent traffic hazards."
+            },
+            "road_maintenance_policy_0": {
+                "doc_name": "Road Maintenance Policy",
+                "chunk_index": 0,
+                "page_number": 1,
+                "section": "Section 4.2",
+                "text": "High-risk potholes near school zones and heavy traffic intersections must be prioritized and repaired by the Public Works Department within 48 to 72 hours."
+            },
+            "urban_flood_guidelines_0": {
+                "doc_name": "Urban Flood Response Guidelines",
+                "chunk_index": 0,
+                "page_number": 2,
+                "section": "Section 1.5",
+                "text": "Drainage overflows and lowland flood incidents must be escalated immediately to the Disaster Management Cell for storm pump deployment."
+            },
+            "water_leakage_protocol_0": {
+                "doc_name": "Water Leakage Emergency Protocol",
+                "chunk_index": 0,
+                "page_number": 1,
+                "section": "Section 3.1",
+                "text": "Main pipeline bursts or active water leaks on roadways should be shut off and repaired by the Water Supply Department within 24 hours of notification."
+            }
+        }
+
+
+
 # 13.8 Auth Route
 @app.post("/auth/login")
 async def login(req: LoginRequest):
@@ -250,7 +285,68 @@ async def report_issue(req: IssueRequest, request: Request):
     workflow_info = final_state.get("workflow") or {}
     validation_info = final_state.get("validation") or {}
     rec_info = final_state.get("recommendation") or {}
-        
+
+    # Build structured AI Trace panel details
+    issue_data = final_state.get("issue") or {}
+    prediction_data = final_state.get("prediction") or {}
+    context_data = final_state.get("context") or {}
+
+    traffic_density = context_data.get("traffic", {}).get("traffic_density", "medium") if isinstance(context_data.get("traffic"), dict) else "medium"
+    explainability_list = prediction_data.get("explainability") or []
+    explainability_str = ", ".join([f"{item['factor']}: {item['weight_pct']:.0f}%" for item in explainability_list]) if explainability_list else "Heuristic model analysis"
+
+    policy_details = []
+    for chunk in final_state.get("rag_chunks") or []:
+        policy_details.append({
+            "name": chunk.get("doc_name", "Municipal Policy"),
+            "citation": f"Section {chunk.get('section', 'N/A')}, Page {chunk.get('page_number', '1')}",
+            "why_applies": chunk.get("text", "")
+        })
+
+    if not policy_details and rec_info.get("cited_policies"):
+        for policy in rec_info.get("cited_policies") or []:
+            policy_details.append({
+                "name": policy,
+                "citation": "Municipal Code",
+                "why_applies": "Referenced in administrative resolution guidelines."
+            })
+
+    ai_trace = {
+        "intake": {
+            "extracted_type": issue_data.get("type", "other"),
+            "extracted_location": (issue_data.get("location") or {}).get("address") or "unknown",
+            "language_detected": issue_data.get("original_language") or "en",
+            "summary": issue_data.get("description", "")
+        },
+        "validation": {
+            "duplicate_found": "yes" if validation_info.get("duplicate") else "no",
+            "location_verified": "yes" if validation_info.get("location_verified") else "no",
+            "weather_corroboration": "yes" if validation_info.get("weather_corroborated") else "no",
+            "media_evidence": "yes" if validation_info.get("has_media") else "no",
+            "confidence_score": f"{int((validation_info.get('confidence_score') or 0.0) * 100)}%"
+        },
+        "prediction": {
+            "flood_risk": f"{int((prediction_data.get('flood_risk') or 0.0) * 100)}%" if prediction_data.get("flood_risk") is not None else "0%",
+            "road_risk": f"{int((prediction_data.get('road_risk') or 0.0) * 100)}%" if prediction_data.get("road_risk") is not None else "0%",
+            "traffic_risk": traffic_density,
+            "risk_explanation": explainability_str
+        },
+        "recommendation": {
+            "action": rec_info.get("action") or "Review by administration",
+            "priority": rec_info.get("priority") or "Low",
+            "sla": "24 hours" if rec_info.get("priority") == "Critical" else ("72 hours" if rec_info.get("priority") == "High" else "7 days"),
+            "policy_citation": ", ".join(rec_info.get("cited_policies") or []) or "No specific policy",
+            "rationale": rec_info.get("rationale") or "Standard administrative handling",
+            "policy_details": policy_details
+        },
+        "workflow": {
+            "assigned_department": workflow_info.get("assigned_department") or "Admin Review",
+            "task_id": workflow_info.get("task_id") or "N/A",
+            "due_date": workflow_info.get("due_date") or "N/A",
+            "status": "open" if workflow_info.get("task_id") else "pending"
+        }
+    }
+
     return {
         "session_id": session_id,
         "issue_id": issue_id,
@@ -260,8 +356,10 @@ async def report_issue(req: IssueRequest, request: Request):
         "department": workflow_info.get("assigned_department") or "Admin Review",
         "priority": rec_info.get("priority") or "Low",
         "confidence": validation_info.get("confidence_score") or 0.0,
-        "next_action": rec_info.get("action") or "Admin Review"
+        "next_action": rec_info.get("action") or "Admin Review",
+        "ai_trace": ai_trace
     }
+
 
 @app.get("/analytics/ward/{ward_id}/health-score")
 async def get_ward_health_score(ward_id: str, request: Request):
@@ -428,10 +526,24 @@ async def delete_document(document_id: str):
 async def get_dashboard(request: Request):
     user_ward_ids = request.state.ward_ids
     
-    latest_health_score = 82.5
+    latest_health_score = 78.5
+    health_score_change = "+2.5"
     open_critical = 12
-    heatmap = [{"ward_id": "w1", "risk": 0.8}, {"ward_id": "w2", "risk": 0.3}]
-    top_critical_issues = []
+    heatmap = [
+        {"ward_id": "w1", "risk": 0.8, "dominant_risk": "road"},
+        {"ward_id": "w2", "risk": 0.7, "dominant_risk": "sanitation"},
+        {"ward_id": "w3", "risk": 0.6, "dominant_risk": "flood"}
+    ]
+    top_critical_issues = [
+        {"task_id": "TSK-001", "department": "Public Works", "priority": "high", "sla_due": "2026-07-06T12:00:00Z", "status": "open"},
+        {"task_id": "TSK-002", "department": "Health", "priority": "critical", "sla_due": "2026-07-05T09:00:00Z", "status": "assigned"},
+        {"task_id": "TSK-003", "department": "Water", "priority": "high", "sla_due": "2026-07-07T14:30:00Z", "status": "open"}
+    ]
+    ai_insights = [
+        "Ward 1 road complaints increased 35% this week",
+        "Flood risk elevated in Ward 3 due to recent rainfall",
+        "Public Works workload may breach SLA in 48 hours"
+    ]
     
     if settings.APP_MODE == "production":
         try:
@@ -538,6 +650,7 @@ async def get_dashboard(request: Request):
             
     return {
         "health_score": latest_health_score,
+        "health_score_change": health_score_change,
         "heatmap": heatmap,
         "trend_7d": [
             {"day": "Mon", "count": 2},
@@ -548,7 +661,8 @@ async def get_dashboard(request: Request):
             {"day": "Sat", "count": 2},
             {"day": "Sun", "count": len(top_critical_issues)}
         ],
-        "top_critical_issues": top_critical_issues
+        "top_critical_issues": top_critical_issues,
+        "ai_insights": ai_insights
     }
 
 # 16.4 Dashboard Real-Time Stream
@@ -557,7 +671,29 @@ async def dashboard_stream(request: Request):
     """
     Firestore `onSnapshot` mock for SSE push of task status updates.
     """
-    user_ward_ids = request.state.ward_ids
+    user_ward_ids = None
+    if settings.APP_MODE == "production":
+        token = request.query_params.get("token")
+        if not token:
+            token = request.cookies.get("token")
+        if not token:
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                token = auth_header.split(" ")[1]
+
+        if not token:
+            raise HTTPException(status_code=401, detail="Authentication token required")
+
+        try:
+            payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+            user_ward_ids = payload.get("ward_ids", [])
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+    else:
+        user_ward_ids = getattr(request.state, "ward_ids", None)
+        if not user_ward_ids:
+            user_ward_ids = ["*"]
+
     
     async def task_generator():
         import json

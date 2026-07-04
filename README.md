@@ -80,23 +80,31 @@ This will run all units and the comprehensive end-to-end integration test suite 
 
 ## 🚀 Running the Platform Locally
 
-Ensure both services are running concurrently to test the complete end-to-end flow.
-
-### Step 1: Start Backend API Gateway
-From the root directory, launch the FastAPI server:
+### Option A: One-Command Start (Windows)
+Run the launcher script from the root directory:
 ```bash
-uvicorn backend.main:app --reload --port 8000
+start-demo.bat
 ```
-*The API docs will be available at `http://localhost:8000/docs`.*
+This automatically verifies dependencies, launches the FastAPI backend and React Vite frontend in separate console windows, and opens your browser.
 
-### Step 2: Start Frontend Client
-From the `frontend` directory, start the Vite development server:
-```bash
-npm run dev
-```
-*Open `http://localhost:5173` in your browser.*
+### Option B: Manual Execution
+Ensure both services are running concurrently to test the complete flow:
 
----
+1. **Start Backend API Gateway**:
+   ```bash
+   uvicorn backend.main:app --reload --port 8000
+   ```
+   *The API docs will be available at `http://localhost:8000/docs`.*
+
+2. **Start Frontend Client**:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+   *Open `http://localhost:5173` in your browser.*
+
+For a detailed interactive guide, refer to the [demo.md](file:///d:/Genapac/Sampark_GENAPAC/demo.md) guide.
+
 
 ## 🕹️ Interactive Demo Walkthrough
 

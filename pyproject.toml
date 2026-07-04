@@ -23,6 +23,10 @@ dependencies = [
     "google-cloud-bigquery",
     "google-cloud-pubsub",
     "google-cloud-storage",
+    "google-cloud-aiplatform",
+    "google-cloud-speech",
+    "sendgrid",
+    "twilio",
     "httpx",
     "pypdf",
     "python-multipart",
@@ -37,8 +41,9 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["backend", "agents", "tools", "rag"]
+testpaths = ["backend", "agents", "tools", "rag", "functions"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["agents", "backend", "tools", "rag", "functions"]
+
 

@@ -165,8 +165,22 @@ class MockGeminiModel:
                     break
             return MockResponse(f'{{"type": "{normal_type}", "location": "MG Road", "description": "pothole on MG Road"}}')
         elif "retrieved" in prompt_str or "Retrieved Policies" in prompt_str:
-            return MockResponse('{"action": "Deploy repair crew to MG Road", "rationale": "High severity pothole posing safety risk", "cited_policies": ["Road Repair Act"]}')
+            if "Urban Flood" in prompt_str:
+                doc_name = "Urban Flood Response Guidelines"
+                action = "Deploy storm water pumps to low-lying areas in lowland zone"
+                rationale = "Lowland drainage overflow requires immediate storm pump deployment under Section 1.5 of the Urban Flood Response Guidelines."
+            elif "Water Leakage" in prompt_str:
+                doc_name = "Water Leakage Emergency Protocol"
+                action = "Shut off local main pipeline valve and dispatch repair crew"
+                rationale = "Pipeline leakages must be isolated and resolved within 24 hours per Section 3.1 of the Water Leakage Emergency Protocol."
+            else:
+                doc_name = "Road Maintenance Policy"
+                action = "Dispatch Public Works crew for pothole repair within 72 hours"
+                rationale = "High-risk potholes near school zones must be prioritized and patched within 72 hours per Section 4.2 of the Road Maintenance Policy."
+            
+            return MockResponse(f'{{"action": "{action}", "rationale": "{rationale}", "cited_policies": ["{doc_name}"]}}')
         return MockResponse('{}')
+
 
 speech_tool = SpeechTool(project_id=settings.GCP_PROJECT_ID)
 vision_tool = VisionTool(project_id=settings.GCP_PROJECT_ID)

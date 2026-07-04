@@ -1,0 +1,106 @@
+
+/* Dashboard Layout Phase 4 */
+.dashboard-v2-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-v2-grid {
+    grid-template-columns: 3fr 1fr;
+  }
+}
+
+.dashboard-v2-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.dashboard-v2-side {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.health-trend {
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.health-trend.up {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+}
+.health-trend.down {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.insight-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+.insight-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+.insight-icon {
+  color: #10b981;
+}
+.insight-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+/* Responsive Media Queries Phase 5 */
+@media (max-width: 768px) {
+  .layout-wrapper {
+    grid-template-columns: 1fr;
+  }
+  
+  .sidebar {
+    padding: 16px;
+    flex-direction: row;
+    overflow-x: auto;
+    align-items: center;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .brand-section {
+    margin-bottom: 0;
+    margin-right: 24px;
+  }
+  
+  .menu-list {
+    flex-direction: row;
+    gap: 8px;
+  }
+  
+  .user-profile {
+    display: none;
+  }
+
+  .main-content {
+    padding: 20px;
+  }
+
+  .dashboard-grid, .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
