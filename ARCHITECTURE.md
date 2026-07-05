@@ -1,20 +1,19 @@
-# Sampark AI Architecture & Production Readiness
+# Sampark AI Architecture — FREE Stack (No GCP Billing Required)
 
-Sampark AI is designed with a highly scalable, event-driven architecture utilizing Google Cloud's enterprise data and AI stack. 
+Sampark AI is a multi-agent, RAG-grounded Decision Intelligence Platform powered entirely by **free Google technologies** and open-source software. No Google Cloud billing account is needed.
 
-> [!IMPORTANT]
-> **Demo Disclaimer**: For hackathon reliability and speed, this live demo runs in **local deterministic mode**. It uses in-memory mock databases and seeded policy documents to guarantee a bulletproof presentation. However, the application uses the exact same interfaces that switch seamlessly to the Google Cloud services detailed below when `APP_MODE=production`.
+---
 
-## Clean Architecture Diagram
+## Architecture Overview
 
 ```mermaid
 graph TD
     %% Citizen & Officer Interfaces
-    Citizen[Citizen Mobile/Web App]
+    Citizen[Citizen Web App]
     Officer[Command Center Dashboard]
     
     %% API Gateway
-    Gateway[FastAPI Gateway\n(CORS, JWT Auth, Rate Limiting)]
+    Gateway[FastAPI Gateway]
     
     %% Core Orchestration
     subgraph AI Reasoning Engine
@@ -32,49 +31,79 @@ graph TD
         LangGraph --> Agent5
     end
     
-    %% Google Cloud Infrastructure
-    subgraph GCP Production Infra
-        CloudRun[Google Cloud Run\n(Scalable Compute)]
-        Vertex[Vertex AI Search\n(RAG / Policy Retrieval)]
-        Firestore[(Firestore)\n(Task & Session Persistence)]
-        BigQuery[(BigQuery)\n(Geospatial Analytics)]
-        PubSub[Cloud Pub/Sub\n(Event Dispatch)]
-        SecretManager[Secret Manager\n(Credentials)]
+    %% Free Stack Infrastructure
+    subgraph FREE Stack
+        Gemini[Gemini API<br/>(Google AI Studio)]
+        FAISS[(FAISS<br/>Vector Search)]
+        SQLite[(SQLite<br/>Database)]
+        DuckDB[(DuckDB<br/>Analytics)]
+        Queue[Async Queue<br/>(In-memory)]
     end
     
     %% Connections
     Citizen -- Submit Issue --> Gateway
-    Officer -- SSE Stream / API --> Gateway
-    Gateway -- Deployed on --> CloudRun
+    Officer -- Dashboard --> Gateway
     Gateway -- Triggers --> LangGraph
     
-    Agent4 -- Retrieves Policy --> Vertex
-    Agent5 -- Dispatches Task --> PubSub
-    
-    LangGraph -- Read/Write State --> Firestore
-    Gateway -- Fetch Analytics --> BigQuery
-    CloudRun -- Secure Access --> SecretManager
+    Agent4 -- RAG Search --> FAISS
+    LangGraph -- Read/Write --> SQLite
+    Gateway -- Analytics --> DuckDB
+    Agent5 -- Events --> Queue
 ```
 
-## Production Path Breakdown
+## Key Differences from GCP Architecture
+
+| Original (Paid GCP) | FREE Replacement | Why |
+| :--- | :--- | :--- |
+| **Vertex AI Gemini** | **Gemini API (AI Studio)** | Free API key, no billing |
+| **Vertex AI Vector Search** | **FAISS** | Open source, runs locally |
+| **Firestore** | **SQLite** | Zero-config, embedded DB |
+| **BigQuery** | **DuckDB** | In-process analytics, free |
+| **Cloud Pub/Sub** | **Python asyncio.Queue** | No infrastructure needed |
+| **Cloud Run** | **uvicorn / Render** | Direct Python deployment |
+| **Secret Manager** | **.env file** | Simple, effective |
+
+---
+
+## How It Works
 
 ### 1. API Gateway (FastAPI)
-Handles all incoming traffic from the React frontend. In production, this layer enforces CORS policies, validates JWT tokens for municipal officers, and applies rate limiting to prevent spam submissions from public endpoints.
+Handles all HTTP traffic from the React frontend. Authenticates users via JWT, applies rate limiting, and routes requests to the LangGraph pipeline.
 
-### 2. Orchestration (LangGraph on Cloud Run)
-The core AI reasoning pipeline is orchestrated via LangGraph, enabling multi-agent handoffs. The entire backend is containerized and deployed on **Google Cloud Run**, allowing the service to scale from zero to thousands of concurrent citizen requests seamlessly.
+### 2. Orchestration (LangGraph)
+Multi-agent pipeline with shared GraphState. Each agent enriches the state with its specific output:
+- **Intake Agent** → classifies issue, extracts location
+- **Validation Agent** → checks duplicates, computes confidence
+- **Data Intelligence Agent** → gathers context
+- **Analytics Agent** → trend detection, sentiment analysis
+- **Prediction Agent** → risk forecasting
+- **Recommendation Agent** → RAG-grounded policy recommendations
+- **Workflow Agent** → department assignment, task creation
 
-### 3. Persistence (Firestore)
-**Firestore** is used as the primary operational database. It stores the live LangGraph state (enabling long-running human-in-the-loop workflows) and maintains the active queue of civic issues and task statuses.
+### 3. Persistence (SQLite)
+Local database storing all operational data: issues, tasks, sessions, community scores, knowledge base chunks. Zero configuration needed.
 
-### 4. Analytics & Geospatial Risk (BigQuery)
-For the Command Center Dashboard, raw issue data is synced to **BigQuery**. This allows for complex, high-performance analytical queries (e.g., calculating the moving 7-day average of community health scores and aggregating geospatial risk by ward) without bogging down the operational database.
+### 4. Analytics (DuckDB)
+In-process analytical database for dashboard queries: community health scores, ward risk heatmaps, trend analysis.
 
-### 5. Grounded RAG (Vertex AI Search)
-The Recommendation Agent relies on **Vertex AI Search** to retrieve relevant civic policies, SLAs, and standard operating procedures. This ensures that all AI-generated actions are strictly grounded in official municipal documentation.
+### 5. Vector Search (FAISS + Gemini Embeddings)
+Policy documents are embedded using the free Gemini Embeddings API and stored in a local FAISS index for semantic search.
 
-### 6. Event Dispatch (Pub/Sub)
-When the Workflow Agent finalizes a task, it dispatches an event to **Cloud Pub/Sub**. This allows decoupled downstream systems (e.g., third-party SMS gateways for citizen updates, or legacy DPW ticketing systems) to subscribe to civic events asynchronously.
+### 6. Event Dispatch (Python Queue)
+In-memory async queue replaces Cloud Pub/Sub for decoupled notification dispatching.
 
-### 7. Security (Secret Manager)
-All LLM API keys, database credentials, and signing secrets are securely injected at runtime via **Google Secret Manager**.
+---
+
+## Deployment
+
+```text
+React Frontend
+    ↓
+FastAPI Backend (uvicorn)
+    ↓
+LangGraph Pipeline
+    ↓
+SQLite + DuckDB + FAISS (all local)
+```
+
+Deploy to **Render**, **Railway**, **Vercel**, or **HuggingFace Spaces** — all have generous free tiers.

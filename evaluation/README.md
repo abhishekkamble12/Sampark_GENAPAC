@@ -26,11 +26,10 @@ The **Intake Agent** is tested across 30 distinct edge-case civic issues spannin
 The **Validation Agent** performs rigorous sanity checks on incoming reports:
 - **Confidence Scoring**: It cross-references extracted entities (location, issue type, severity) and assigns a confidence score.
 - **Corroboration**: Checks for weather corroboration (e.g., "flooding" during a known storm) and media evidence.
-*Outcome: 100% of issues missing location data or below the 0.4 confidence threshold are flagged for manual review rather than automated routing.*
+*Outcome: 100% of issues missing location data or below the 0.4 confidence threshold are flagged for manual review rather than automated routing.*## 3. RAG Faithfulness
 
-## 3. RAG Faithfulness
 The **Recommendation Agent** grounds its civic action recommendations in actual policy.
-- **Strict Citation**: A recommendation *must* cite an available policy from the Vertex AI Search / local document store.
+- **Strict Citation**: A recommendation *must* cite an available policy from the FAISS vector store / local knowledge base.
 - **Hallucination Prevention**: If no policy is found for a niche issue, the agent explicitly states "No specific policy found; routing to general admin" rather than fabricating a municipal code.
 *Outcome: 100% citation coverage for issues mapping to the seeded policies.*
 

@@ -27,7 +27,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy static assets produced by the builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Cloud Run requires the container to listen on 8080
+# Deployment platforms (Render, Railway, etc.) expect port 8080
 EXPOSE 8080
 
 # Run nginx in the foreground so the container stays alive

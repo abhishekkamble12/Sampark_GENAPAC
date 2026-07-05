@@ -5,32 +5,49 @@ build-backend = "hatchling.build"
 [project]
 name = "sampark-ai-platform"
 version = "0.1.0"
-description = "Sampark AI Decision Intelligence Platform — multi-agent, RAG-grounded system on Google Cloud"
+description = "Sampark AI Decision Intelligence Platform — multi-agent, RAG-grounded system powered by Google AI Studio (FREE)"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 
 dependencies = [
+    # Web Framework
     "fastapi",
     "uvicorn",
     "pydantic",
     "pydantic-settings",
+    "python-multipart",
+
+    # Auth
     "pyjwt",
     "bcrypt",
+
+    # AI / Orchestration
     "langgraph",
     "langchain",
-    "google-cloud-firestore",
-    "google-cloud-bigquery",
-    "google-cloud-pubsub",
-    "google-cloud-storage",
-    "google-cloud-aiplatform",
-    "google-cloud-speech",
+
+    # Google AI Studio (FREE - replaces Vertex AI)
+    "google-generativeai",
+
+    # Vector Search (FREE - replaces Vertex AI Vector Search)
+    "faiss-cpu",
+    "numpy",
+
+    # Local Databases (FREE - replaces Firestore + BigQuery)
+    "aiosqlite",
+
+    # Analytics (FREE - replaces BigQuery)
+    "duckdb",
+
+    # HTTP
+    "httpx",
+
+    # PDF Parsing
+    "pypdf",
+
+    # Notifications (free tiers available)
     "sendgrid",
     "twilio",
-    "httpx",
-    "pypdf",
-    "python-multipart",
-    "google-generativeai"
 ]
 [project.optional-dependencies]
 dev = [
@@ -45,5 +62,3 @@ testpaths = ["backend", "agents", "tools", "rag", "functions"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["agents", "backend", "tools", "rag", "functions"]
-
-

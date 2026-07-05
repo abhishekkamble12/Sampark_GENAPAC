@@ -16,8 +16,7 @@ COPY pyproject.toml ./
 
 # Install all dependencies into a prefix directory so we can copy them cleanly
 RUN pip install --upgrade pip \
-    && pip install --no-cache-dir --prefix=/install ".[langgraph]" 2>/dev/null \
-    || pip install --no-cache-dir --prefix=/install .
+    && pip install --no-cache-dir --prefix=/install .
 
 # ─── Stage 2: runtime ────────────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime
