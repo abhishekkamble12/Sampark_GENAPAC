@@ -96,12 +96,10 @@ RUN chmod +x /entrypoint.sh
 # Create user
 RUN groupadd -g 1001 appgroup && \
     useradd -u 1001 -g appgroup -m appuser && \
-    chown -R appuser:appgroup \
-        /app \
-        /usr/share/nginx/html \
-        /var/log/nginx \
-        /var/lib/nginx \
-        /var/cache/nginx
+    mkdir -p /var/cache/nginx /var/log/nginx /var/lib/nginx && \
+    chown -R appuser:appgroup /app && \
+    chown -R appuser:appgroup /usr/share/nginx/html && \
+    chown -R appuser:appgroup /var/cache/nginx /var/log/nginx /var/lib/nginx || true
 
 USER appuser
 
