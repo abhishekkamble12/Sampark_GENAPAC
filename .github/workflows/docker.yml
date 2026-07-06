@@ -20,7 +20,6 @@ env:
 jobs:
   build-and-push:
     name: Build & Push Docker Image
-    needs: test
     runs-on: ubuntu-latest
 
     if: |
