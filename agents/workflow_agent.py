@@ -114,7 +114,7 @@ def make_workflow_node(
                 await pubsub_client.publish("task-created", event_payload)
             else:
                 # Production google-cloud-pubsub Client
-                topic_path = pubsub_client.topic_path(settings.GCP_PROJECT_ID, settings.PUBSUB_TOPIC_TASK_CREATED)
+                topic_path = "projects/local/topics/task-created"  # FREE: Uses LocalEventQueue instead of Pub/Sub
                 data_bytes = json.dumps(event_payload).encode("utf-8")
                 loop = asyncio.get_running_loop()
                 future = await loop.run_in_executor(

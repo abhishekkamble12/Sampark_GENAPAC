@@ -6,7 +6,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from rag.ingestor import Ingestor, CHUNK_SIZE, OVERLAP_SIZE
 from rag.retriever import Retriever
-from rag.tests.test_rag_pipeline import _MockVertexAI, _MockFirestore
+from rag.tests.test_rag_pipeline import _MockEmbeddingTool, _MockFirestore
 
 @given(
     st.text(min_size=100, max_size=10000, alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Zs')))
@@ -23,7 +23,7 @@ def test_retrieval_finds_verbatim_sentence(pdf_text):
     sentence = " ".join(words[mid:mid+10])
     
     async def _run():
-        vertex = _MockVertexAI()
+        vertex = _MockEmbeddingTool()
         fs = _MockFirestore()
         ing = Ingestor(vertex, fs)
         

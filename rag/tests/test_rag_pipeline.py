@@ -6,7 +6,7 @@ from rag.ingestor import Ingestor, DocumentChunk, CHUNK_SIZE, OVERLAP_SIZE
 from rag.retriever import Retriever
 from rag.generator import Generator
 
-class _MockVertexAI:
+class _MockEmbeddingTool:
     def __init__(self, embeddings_to_return=None, search_results=None):
         self.embeddings = embeddings_to_return or []
         self.search_results = search_results or []
@@ -52,7 +52,7 @@ async def test_ingestor_chunking_logic():
     rag.ingestor.OVERLAP_SIZE = 2
     
     text = "word1 word2 word3 word4 word5 word6 word7 word8 word9"
-    ingestor = Ingestor(_MockVertexAI(), _MockFirestore())
+    ingestor = Ingestor(_MockEmbeddingTool(), _MockFirestore())
     chunks = ingestor.chunk_text(text, "doc1", 1, 0)
     
     assert len(chunks) == 3
@@ -75,7 +75,7 @@ async def test_ingestor_chunking_logic():
 @pytest.mark.asyncio
 async def test_retriever_empty_results():
     # 9.8 Empty list + no_policy_context = true if results < 0.75
-    mock_vertex = _MockVertexAI(search_results=[{"id": "doc_0", "score": 0.5}])
+    mock_vertex = _MockEmbeddingTool(search_results=[{"id": "doc_0", "score": 0.5}])
     retriever = Retriever(mock_vertex, _MockFirestore())
     
     chunks, no_policy = await retriever.retrieve("query")

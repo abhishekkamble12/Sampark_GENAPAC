@@ -238,16 +238,25 @@ def make_intake_node(
                 existing_issue = state.get("issue") or {}
                 issue_id_to_use = existing_issue.get("id") or f"iss_{uuid.uuid4().hex[:8]}"
 
+                # Merge existing location (lat, lng, ward_id) with newly extracted address
+                merged_location = {}
+                existing_loc = existing_issue.get("location")
+                if isinstance(existing_loc, dict):
+                    merged_location.update(existing_loc)
+                if location and isinstance(location, dict):
+                    merged_location["address"] = location.get("address") or merged_location.get("address")
+
                 issue: IssueObject = {
                     "id": issue_id_to_use,
                     "type": canonical_type,
-                    "location": location,
+                    "location": merged_location,
                     "description": description,
                     "media_refs": media_refs,
                     "original_language": original_language,
                     "severity": None,
                 }
                 state["issue"] = issue
+
 
         except TimeoutError:
             logger.warning("intake_node text-processing SLA exceeded (%ds)", _SLA_TEXT_SECONDS)

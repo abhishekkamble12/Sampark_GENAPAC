@@ -52,6 +52,23 @@ class WeatherTool:
             Returns ``{"current": None, "hourly_48h": [], "rainfall_forecast_48h": 0.0}``
             on any error.
         """
+        from backend.config import settings
+        if not self._api_key or settings.APP_MODE == "local":
+            return {
+                "current": {
+                    "temp": 24.0,
+                    "feels_like": 25.0,
+                    "humidity": 85,
+                    "weather_description": "heavy rain",
+                    "wind_speed": 4.5,
+                    "rain_1h": 5.0,
+                },
+                "hourly_48h": [
+                    {"dt": 1690000000, "temp": 24.0, "humidity": 85, "weather_description": "heavy rain", "rain_1h": 5.0, "pop": 0.9}
+                ],
+                "rainfall_forecast_48h": 25.0,
+            }
+
         try:
             async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
                 resp = await client.get(

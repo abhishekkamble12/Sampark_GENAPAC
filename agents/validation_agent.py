@@ -160,6 +160,8 @@ def make_validation_node(
                 status="low_confidence",
                 location_verified=False,
                 failure_reason="timeout",
+                weather_corroborated=False,
+                has_media=False,
             )
             return state
 
@@ -169,6 +171,8 @@ def make_validation_node(
             status=status,
             location_verified=location_verified,
             failure_reason=failure_reason,
+            weather_corroborated=weather_corroborated,
+            has_media=has_media,
         )
         return state
 

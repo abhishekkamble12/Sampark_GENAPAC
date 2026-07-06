@@ -1,9 +1,11 @@
 """
-agents/resume.py — Resume-from-checkpoint logic for the Sampark AI pipeline.
+agents/resume.py — Resume-from-checkpoint logic for the Sampark AI pipeline (FREE Stack)
 
 When a new execution arrives with an existing ``session_id``, the pipeline
-loads the last completed checkpoint from Firestore and restores the
+loads the last completed checkpoint from the local saver and restores the
 ``GraphState`` from that point, skipping all previously completed nodes.
+
+Replaces FirestoreCheckpointSaver with LocalCheckpointSaver (in-memory + SQLite).
 """
 
 from __future__ import annotations
@@ -11,13 +13,11 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from agents.checkpointing import FirestoreCheckpointSaver
 from agents.state import GraphState
 
 logger = logging.getLogger(__name__)
 
-# Ordered list of all pipeline nodes — used to determine which nodes come
-# after the last completed checkpoint so we can skip earlier ones.
+# Ordered list of all pipeline nodes
 PIPELINE_NODE_ORDER: list[str] = [
     "intake_node",
     "validation_node",
@@ -33,31 +33,28 @@ PIPELINE_NODE_ORDER: list[str] = [
 
 async def try_resume(
     session_id: str,
-    saver: FirestoreCheckpointSaver,
+    saver: Any,  # LocalCheckpointSaver instance
 ) -> tuple[GraphState | None, str | None]:
     """Attempt to restore pipeline state from the most recent checkpoint.
 
-    Reads all completed checkpoint documents for ``session_id`` from
-    Firestore, determines the furthest completed node in
-    ``PIPELINE_NODE_ORDER``, and loads that node's ``GraphState`` snapshot.
+    Uses LocalCheckpointSaver (in-memory + optional SQLite) instead of
+    FirestoreCheckpointSaver.
 
     Parameters
     ----------
     session_id:
         The pipeline run identifier to look up.
     saver:
-        Configured :class:`~agents.checkpointing.FirestoreCheckpointSaver`.
+        Configured LocalCheckpointSaver instance.
 
     Returns
     -------
     tuple[GraphState | None, str | None]
         A ``(state, resume_node)`` pair where:
-
         * ``state`` is the restored ``GraphState`` at the last checkpoint, or
           ``None`` if no checkpoint exists.
-        * ``resume_node`` is the name of the *next* node to execute (the one
-          immediately after the last completed checkpoint), or ``None`` if the
-          pipeline is complete or no checkpoint was found.
+        * ``resume_node`` is the name of the *next* node to execute, or
+          ``None`` if the pipeline is complete or no checkpoint was found.
     """
     completed_nodes = await saver.list_completed_nodes(session_id)
     if not completed_nodes:
@@ -74,7 +71,6 @@ async def try_resume(
                 last_completed_index = idx
                 last_completed_name = node
         except ValueError:
-            # Node not in ordered list (e.g. error_response_node) — skip
             pass
 
     if last_completed_name is None:
@@ -98,7 +94,6 @@ async def try_resume(
     # Determine the next node to run
     next_index = last_completed_index + 1
     if next_index >= len(PIPELINE_NODE_ORDER):
-        # Pipeline was already complete
         logger.info("Session %s is already complete — no resume needed", session_id)
         return state, None
 
@@ -116,14 +111,9 @@ async def build_initial_state(
     query: str,
     user: dict[str, Any],
     session_id: str,
-    saver: FirestoreCheckpointSaver | None = None,
+    saver: Any | None = None,  # LocalCheckpointSaver or None
 ) -> tuple[GraphState, str | None]:
     """Build the starting ``GraphState`` for a pipeline invocation.
-
-    If ``saver`` is provided and a prior checkpoint exists for
-    ``session_id``, the restored state and resume node are returned.
-    Otherwise a fresh ``GraphState`` is returned with ``resume_node=None``
-    (meaning the graph starts from ``START``).
 
     Parameters
     ----------
@@ -134,15 +124,13 @@ async def build_initial_state(
     session_id:
         Unique run identifier.
     saver:
-        Optional checkpoint saver.  Pass ``None`` to always start fresh
-        (useful in unit tests).
+        Optional LocalCheckpointSaver. Pass ``None`` to always start fresh.
 
     Returns
     -------
     tuple[GraphState, str | None]
         ``(state, resume_node)`` — if ``resume_node`` is not ``None`` the
-        caller should invoke the graph starting at that node rather than
-        ``START``.
+        caller should invoke the graph starting at that node.
     """
     if saver is not None:
         restored_state, resume_node = await try_resume(session_id, saver)

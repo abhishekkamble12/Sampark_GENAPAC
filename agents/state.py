@@ -75,6 +75,9 @@ class ValidationResult(TypedDict):
     status: str  # valid | low_confidence
     location_verified: bool
     failure_reason: Optional[str]
+    weather_corroborated: Optional[bool]
+    has_media: Optional[bool]
+
 
 
 class AnalyticsResult(TypedDict):

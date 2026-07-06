@@ -53,7 +53,8 @@ def make_recommendation_node(
                 # 2. Retrieve Policy Context (10.2)
                 chunks, no_policy = await retriever.retrieve(query)
                 state["no_policy_context"] = no_policy
-                
+                state["rag_chunks"] = chunks
+
                 # 3. Generate Recommendation (10.2)
                 gen_data = await generator.generate_recommendation(query, chunks)
                 

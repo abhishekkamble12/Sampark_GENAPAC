@@ -241,7 +241,7 @@ export default function App() {
       <div className="login-container">
         <div className="glass-panel login-card">
           <div className="login-header">
-            <div className="brand-logo" style={{ fontSize: '48px', marginBottom: '16px' }}>🇮🇳</div>
+            <div className="brand-logo" style={{ marginBottom: '16px' }}><Building2 size={48} color="var(--primary-color)" /></div>
             <h2 className="brand-name">SAMPARK AI</h2>
             <p style={{ color: 'var(--text-secondary)' }}>Community Decision Intelligence Platform</p>
           </div>
@@ -300,7 +300,7 @@ export default function App() {
       <aside className="sidebar">
         <div>
           <div className="brand-section">
-            <span className="brand-logo">🇮🇳</span>
+            <span className="brand-logo"><Building2 size={28} color="var(--primary-color)" /></span>
             <span className="brand-name">Sampark AI</span>
           </div>
 
@@ -548,10 +548,235 @@ export default function App() {
                   </div>
                 </div>
 
-                <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
                   <div className="result-label">Citizen-facing Message</div>
                   <p style={{ fontSize: '15px', fontWeight: '500' }}>{pipelineResult.message}</p>
                 </div>
+
+                {/* AI Decision Trace Panel */}
+                {pipelineResult.ai_trace && (
+                  <div className="trace-container">
+                    <div className="trace-title">
+                      <Sparkles size={20} />
+                      <span>🤖 AI Decision Trace & Agent Reasoning Pipeline</span>
+                    </div>
+
+                    <div className="trace-timeline">
+                      {/* 1. INTAKE AGENT */}
+                      <div className="trace-agent-card">
+                        <div className="trace-agent-header">
+                          <div className="trace-agent-icon-wrapper">
+                            <Send size={14} />
+                          </div>
+                          <span className="trace-agent-name">Intake Agent</span>
+                          <span className="trace-agent-badge">Processed</span>
+                        </div>
+                        <div className="trace-grid">
+                          <div className="trace-item">
+                            <span className="trace-item-label">Extracted issue type</span>
+                            <span className="trace-item-value" style={{ textTransform: 'capitalize' }}>
+                              {pipelineResult.ai_trace.intake.extracted_type}
+                            </span>
+                          </div>
+                          <div className="trace-item">
+                            <span className="trace-item-label">Extracted location</span>
+                            <span className="trace-item-value">
+                              {pipelineResult.ai_trace.intake.extracted_location}
+                            </span>
+                          </div>
+                          <div className="trace-item">
+                            <span className="trace-item-label">Language detected</span>
+                            <span className="trace-item-value" style={{ textTransform: 'uppercase' }}>
+                              {pipelineResult.ai_trace.intake.language_detected}
+                            </span>
+                          </div>
+                          <div className="trace-item" style={{ gridColumn: '1 / -1' }}>
+                            <span className="trace-item-label">Summary</span>
+                            <span className="trace-item-value" style={{ fontWeight: '500' }}>
+                              "{pipelineResult.ai_trace.intake.summary}"
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 2. VALIDATION AGENT */}
+                      <div className="trace-agent-card">
+                        <div className="trace-agent-header">
+                          <div className="trace-agent-icon-wrapper">
+                            <CheckCircle2 size={14} />
+                          </div>
+                          <span className="trace-agent-name">Validation Agent</span>
+                          <span className="trace-agent-badge">Evaluated</span>
+                        </div>
+                        <div className="trace-grid">
+                          <div className="trace-item">
+                            <span className="trace-item-label">Duplicate found</span>
+                            <span className="trace-item-value" style={{ textTransform: 'capitalize', color: pipelineResult.ai_trace.validation.duplicate_found === 'yes' ? 'var(--warning-color)' : 'var(--success-color)' }}>
+                              {pipelineResult.ai_trace.validation.duplicate_found}
+                            </span>
+                          </div>
+                          <div className="trace-item">
+                            <span className="trace-item-label">Location verified</span>
+                            <span className="trace-item-value" style={{ textTransform: 'capitalize', color: pipelineResult.ai_trace.validation.location_verified === 'yes' ? 'var(--success-color)' : 'var(--error-color)' }}>
+                              {pipelineResult.ai_trace.validation.location_verified}
+                            </span>
+                          </div>
+                          <div className="trace-item">
+                            <span className="trace-item-label">Weather corroboration</span>
+                            <span className="trace-item-value" style={{ textTransform: 'capitalize', color: pipelineResult.ai_trace.validation.weather_corroboration === 'yes' ? 'var(--success-color)' : 'var(--text-secondary)' }}>
+                              {pipelineResult.ai_trace.validation.weather_corroboration}
+                            </span>
+                          </div>
+                          <div className="trace-item">
+                            <span className="trace-item-label">Media evidence</span>
+                            <span className="trace-item-value" style={{ textTransform: 'capitalize' }}>
+                              {pipelineResult.ai_trace.validation.media_evidence}
+                            </span>
+                          </div>
+                          <div className="trace-item">
+                            <span className="trace-item-label">Confidence score</span>
+                            <span className="trace-item-value" style={{ color: 'var(--primary-color)' }}>
+                              {pipelineResult.ai_trace.validation.confidence_score}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3. PREDICTION AGENT */}
+                      <div className="trace-agent-card">
+                        <div className="trace-agent-header">
+                          <div className="trace-agent-icon-wrapper">
+                            <Activity size={14} />
+                          </div>
+                          <span className="trace-agent-name">Prediction Agent</span>
+                          <span className="trace-agent-badge">Forecasted</span>
+                        </div>
+                        <div className="trace-grid">
+                          <div className="trace-item">
+                            <span className="trace-item-label">Flood risk</span>
+                            <span className="trace-item-value" style={{ color: parseFloat(pipelineResult.ai_trace.prediction.flood_risk) > 70 ? 'var(--error-color)' : 'var(--text-primary)' }}>
+                              {pipelineResult.ai_trace.prediction.flood_risk}
+                            </span>
+                          </div>
+                          <div className="trace-item">
+                            <span className="trace-item-label">Road risk</span>
+                            <span className="trace-item-value" style={{ color: parseFloat(pipelineResult.ai_trace.prediction.road_risk) > 70 ? 'var(--error-color)' : 'var(--text-primary)' }}>
+                              {pipelineResult.ai_trace.prediction.road_risk}
+                            </span>
+                          </div>
+                          <div className="trace-item">
+                            <span className="trace-item-label">Traffic risk</span>
+                            <span className="trace-item-value" style={{ textTransform: 'capitalize' }}>
+                              {pipelineResult.ai_trace.prediction.traffic_risk}
+                            </span>
+                          </div>
+                          <div className="trace-item" style={{ gridColumn: '1 / -1' }}>
+                            <span className="trace-item-label">Risk explanation</span>
+                            <span className="trace-item-value" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                              {pipelineResult.ai_trace.prediction.risk_explanation}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 4. RECOMMENDATION AGENT */}
+                      <div className="trace-agent-card">
+                        <div className="trace-agent-header">
+                          <div className="trace-agent-icon-wrapper">
+                            <Sparkles size={14} />
+                          </div>
+                          <span className="trace-agent-name">Recommendation Agent</span>
+                          <span className="trace-agent-badge">Grounded</span>
+                        </div>
+                        <div className="trace-grid">
+                          <div className="trace-item" style={{ gridColumn: '1 / -1' }}>
+                            <span className="trace-item-label">Recommended action</span>
+                            <span className="trace-item-value" style={{ color: 'var(--warning-color)' }}>
+                              {pipelineResult.ai_trace.recommendation.action}
+                            </span>
+                          </div>
+                          <div className="trace-item">
+                            <span className="trace-item-label">Priority</span>
+                            <span className="trace-item-value">
+                              <span className={`badge badge-${pipelineResult.ai_trace.recommendation.priority.toLowerCase()}`}>
+                                {pipelineResult.ai_trace.recommendation.priority}
+                              </span>
+                            </span>
+                          </div>
+                          <div className="trace-item">
+                            <span className="trace-item-label">SLA</span>
+                            <span className="trace-item-value">
+                              {pipelineResult.ai_trace.recommendation.sla}
+                            </span>
+                          </div>
+                          <div className="trace-item" style={{ gridColumn: '1 / -1' }}>
+                            <span className="trace-item-label">Policy Citation Details (RAG Grounding)</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+                              {pipelineResult.ai_trace.recommendation.policy_details && pipelineResult.ai_trace.recommendation.policy_details.map((detail, dIdx) => (
+                                <div key={dIdx} style={{ background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.15)', padding: '12px', borderRadius: '8px', fontSize: '13px' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', color: '#a5b4fc', marginBottom: '4px' }}>
+                                    <span>📜 {detail.name}</span>
+                                    <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>{detail.citation}</span>
+                                  </div>
+                                  <div style={{ color: 'var(--text-secondary)', fontStyle: 'italic', lineHeight: '1.4' }}>
+                                    "{detail.why_applies}"
+                                  </div>
+                                </div>
+                              ))}
+                              {(!pipelineResult.ai_trace.recommendation.policy_details || pipelineResult.ai_trace.recommendation.policy_details.length === 0) && (
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>No policy details available.</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="trace-item" style={{ gridColumn: '1 / -1' }}>
+                            <span className="trace-item-label">Rationale</span>
+                            <span className="trace-item-value" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                              {pipelineResult.ai_trace.recommendation.rationale}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 5. WORKFLOW AGENT */}
+                      <div className="trace-agent-card">
+                        <div className="trace-agent-header">
+                          <div className="trace-agent-icon-wrapper">
+                            <Building2 size={14} />
+                          </div>
+                          <span className="trace-agent-name">Workflow Agent</span>
+                          <span className="trace-agent-badge">Dispatched</span>
+                        </div>
+                        <div className="trace-grid">
+                          <div className="trace-item">
+                            <span className="trace-item-label">Assigned department</span>
+                            <span className="trace-item-value" style={{ color: 'var(--success-color)' }}>
+                              {pipelineResult.ai_trace.workflow.assigned_department}
+                            </span>
+                          </div>
+                          <div className="trace-item">
+                            <span className="trace-item-label">Task ID</span>
+                            <span className="trace-item-value" style={{ fontFamily: 'monospace' }}>
+                              {pipelineResult.ai_trace.workflow.task_id}
+                            </span>
+                          </div>
+                          <div className="trace-item">
+                            <span className="trace-item-label">Due date</span>
+                            <span className="trace-item-value">
+                              {new Date(pipelineResult.ai_trace.workflow.due_date).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="trace-item">
+                            <span className="trace-item-label">Status</span>
+                            <span className="trace-item-value" style={{ textTransform: 'capitalize', color: 'var(--success-color)' }}>
+                              {pipelineResult.ai_trace.workflow.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -587,98 +812,129 @@ export default function App() {
               </div>
             )}
 
-            {/* Metrics summary cards */}
-            <div className="summary-grid">
-              <div className="glass-panel metric-card">
-                <div className="metric-icon">
-                  <Activity />
-                </div>
-                <div className="metric-data">
-                  <h3>{dashboardData.health_score.toFixed(1)} / 100</h3>
-                  <p>Community Health Score</p>
-                </div>
-              </div>
-              
-              <div className="glass-panel metric-card">
-                <div className="metric-icon" style={{ color: 'var(--error-color)', background: 'rgba(239, 68, 68, 0.1)' }}>
-                  <AlertTriangle />
-                </div>
-                <div className="metric-data">
-                  <h3>{dashboardData.top_critical_issues.length}</h3>
-                  <p>Critical Open Tasks</p>
-                </div>
-              </div>
-
-              <div className="glass-panel metric-card">
-                <div className="metric-icon" style={{ color: 'var(--success-color)', background: 'rgba(16, 185, 129, 0.1)' }}>
-                  <Building2 />
-                </div>
-                <div className="metric-data">
-                  <h3>{user.ward_ids.includes('*') ? 'All Wards' : `${user.ward_ids.length} Wards`}</h3>
-                  <p>Assigned Municipal Jurisdictions</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="dashboard-grid">
-              {/* Risks Heatmap visual list */}
-              <div className="glass-panel">
-                <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '20px' }}>Geospatial Risk Levels</h3>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '10px 0' }}>
-                  {dashboardData.heatmap.map((w, idx) => (
-                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: '600' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <MapPin size={16} />
-                          Ward ID: {w.ward_id.toUpperCase()}
-                        </span>
-                        <span>{(w.risk * 100).toFixed(0)}% Risk Score</span>
-                      </div>
-                      <div style={{ width: '100%', height: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '99px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                        <div style={{ 
-                          width: `${w.risk * 100}%`, 
-                          height: '100%', 
-                          background: w.risk > 0.7 ? 'var(--error-color)' : (w.risk > 0.4 ? 'var(--warning-color)' : 'var(--success-color)'),
-                          boxShadow: `0 0 10px ${w.risk > 0.7 ? 'rgba(239,68,68,0.5)' : 'rgba(16,185,129,0.3)'}`
-                        }} />
-                      </div>
+            {/* Command Center Dashboard V2 */}
+            <div className="dashboard-v2-grid">
+              {/* Left Main Column */}
+              <div className="dashboard-v2-main">
+                <div className="summary-grid" style={{ marginBottom: 0 }}>
+                  <div className="glass-panel metric-card" style={{ flex: 1 }}>
+                    <div className="metric-icon">
+                      <Activity />
                     </div>
-                  ))}
-                  {dashboardData.heatmap.length === 0 && (
-                    <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>No ward scope risks computed.</p>
-                  )}
+                    <div className="metric-data" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <h3>{dashboardData.health_score ? dashboardData.health_score.toFixed(1) : '82.5'} / 100</h3>
+                        {dashboardData.health_score_change && (
+                          <span className={`health-trend ${dashboardData.health_score_change.startsWith('+') ? 'up' : 'down'}`}>
+                            {dashboardData.health_score_change}
+                          </span>
+                        )}
+                      </div>
+                      <p>Community Health Score</p>
+                    </div>
+                  </div>
+                  
+                  <div className="glass-panel metric-card" style={{ flex: 1 }}>
+                    <div className="metric-icon" style={{ color: 'var(--error-color)', background: 'rgba(239, 68, 68, 0.1)' }}>
+                      <AlertTriangle />
+                    </div>
+                    <div className="metric-data">
+                      <h3>{dashboardData.top_critical_issues ? dashboardData.top_critical_issues.length : 0}</h3>
+                      <p>Critical Action Queue</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Critical Action Queue Table */}
+                <div className="glass-panel">
+                  <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <AlertCircle size={20} color="var(--error-color)" /> Critical Action Queue
+                  </h3>
+                  
+                  <div className="critical-list">
+                    {dashboardData.top_critical_issues && dashboardData.top_critical_issues.map((issue, idx) => (
+                      <div key={idx} className="critical-item">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                              {issue.task_id || `TSK-${issue.id?.substring(0, 4).toUpperCase()}`}
+                            </span>
+                            <h5 style={{ fontWeight: '700', fontSize: '15px' }}>
+                              {issue.desc ? (issue.desc.length > 50 ? `${issue.desc.substring(0, 50)}...` : issue.desc) : 'Critical Task'}
+                            </h5>
+                          </div>
+                          <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                            <MapPin size={12} style={{ display: 'inline', marginRight: '4px' }}/> Ward {issue.ward_id?.toUpperCase()} • Dept: {issue.department}
+                            {issue.sla_due && ` • Due: ${new Date(issue.sla_due).toLocaleDateString()}`}
+                          </p>
+                        </div>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                            {issue.status || 'OPEN'}
+                          </span>
+                          <span className={`badge badge-${(issue.priority || 'high').toLowerCase()}`}>
+                            {issue.priority || 'HIGH'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+
+                    {(!dashboardData.top_critical_issues || dashboardData.top_critical_issues.length === 0) && (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 0', color: 'var(--text-secondary)' }}>
+                        <CheckCircle2 size={32} style={{ marginBottom: '8px', color: 'var(--success-color)' }} />
+                        <p style={{ fontSize: '14px' }}>Action queue is clear.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Critical/High Issues List */}
-              <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '20px' }}>Critical Action List</h3>
-                
-                <div className="critical-list" style={{ flexGrow: 1 }}>
-                  {dashboardData.top_critical_issues.map((issue, idx) => (
-                    <div key={idx} className="critical-item">
-                      <div>
-                        <h5 style={{ fontWeight: '700', fontSize: '14px', marginBottom: '4px' }}>
-                          {issue.desc.length > 40 ? `${issue.desc.substring(0, 40)}...` : issue.desc}
-                        </h5>
-                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                          Ward: {issue.ward_id.toUpperCase()} | Dept: {issue.department}
-                        </p>
+              {/* Right Side Column */}
+              <div className="dashboard-v2-side">
+                {/* AI Insights Panel */}
+                <div className="glass-panel" style={{ background: 'linear-gradient(180deg, rgba(22, 30, 49, 0.8) 0%, rgba(17, 24, 39, 0.95) 100%)' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#a5b4fc' }}>
+                    <Sparkles size={18} /> AI Insights
+                  </h3>
+                  <div>
+                    {dashboardData.ai_insights && dashboardData.ai_insights.map((insight, idx) => (
+                      <div key={idx} className="insight-card">
+                        <Activity size={16} className="insight-icon" />
+                        <span className="insight-text">{insight}</span>
                       </div>
-                      
-                      <span className={`badge badge-${(issue.priority || 'high').toLowerCase()}`}>
-                        {issue.priority || 'HIGH'}
-                      </span>
-                    </div>
-                  ))}
+                    ))}
+                    {(!dashboardData.ai_insights || dashboardData.ai_insights.length === 0) && (
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Gathering insights...</p>
+                    )}
+                  </div>
+                </div>
 
-                  {dashboardData.top_critical_issues.length === 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
-                      <AlertCircle size={32} style={{ marginBottom: '8px' }} />
-                      <p style={{ fontSize: '14px' }}>No critical issues reported.</p>
-                    </div>
-                  )}
+                {/* Ward Risk Map */}
+                <div className="glass-panel">
+                  <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px' }}>Ward Risk Map</h3>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {dashboardData.heatmap && dashboardData.heatmap.map((w, idx) => (
+                      <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: '600' }}>
+                          <span>Ward {w.ward_id.toUpperCase()}</span>
+                          <span>{(w.risk * 100).toFixed(0)}% Risk</span>
+                        </div>
+                        <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '99px', overflow: 'hidden' }}>
+                          <div style={{ 
+                            width: `${w.risk * 100}%`, height: '100%', 
+                            background: w.risk > 0.7 ? 'var(--error-color)' : (w.risk > 0.4 ? 'var(--warning-color)' : 'var(--success-color)')
+                          }} />
+                        </div>
+                        {w.dominant_risk && (
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                            Dominant Risk: {w.dominant_risk}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
