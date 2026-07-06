@@ -96,14 +96,43 @@ In-memory async queue replaces Cloud Pub/Sub for decoupled notification dispatch
 
 ## Deployment
 
+### Unified Docker Container (Recommended)
+
+The entire platform is packaged into a single multi-stage Docker image:
+
 ```text
-React Frontend
-    ↓
-FastAPI Backend (uvicorn)
-    ↓
-LangGraph Pipeline
-    ↓
-SQLite + DuckDB + FAISS (all local)
+┌──────────────────────────────────────────────────────┐
+│                  Docker Container                      │
+│                                                        │
+│  Port 8080 ─── nginx ─── React SPA (built via Vite)    │
+│  Port 8000 ─── uvicorn ── FastAPI Backend              │
+│                  │                                      │
+│                  ├── LangGraph Agent Pipeline           │
+│                  ├── SQLite (operational DB)            │
+│                  ├── DuckDB (analytics)                 │
+│                  └── FAISS (vector search)              │
+└──────────────────────────────────────────────────────┘
 ```
 
-Deploy to **Render**, **Railway**, **Vercel**, or **HuggingFace Spaces** — all have generous free tiers.
+```bash
+docker build -t sampark-ai .
+docker run -p 8080:8080 -p 8000:8000 sampark-ai
+```
+
+### CI/CD Pipeline
+
+On push to `main` or `version3`, `.github/workflows/docker.yml`:
+1. Runs `pytest` test suite
+2. Builds the unified Docker image (with GitHub Actions cache)
+3. Pushes to Docker Hub with tags: `latest`, branch name, commit SHA
+4. Runs a smoke test (health endpoint check)
+5. (Optional) Triggers Render deployment via webhook
+
+### Legacy Deployments
+
+| Platform | Component | Method |
+| :--- | :--- | :--- |
+| **Render** | Backend | `uvicorn backend.main:app --host 0.0.0.0 --port 10000` |
+| **Railway** | Backend | Same as Render |
+| **Vercel** | Frontend | Build: `npm run build`, Output: `dist` |
+| **HuggingFace Spaces** | Full app | Docker-based deployment |

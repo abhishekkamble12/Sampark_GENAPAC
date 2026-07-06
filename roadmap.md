@@ -10,6 +10,11 @@ I recommend organizing it into **10 phases** rather than "Day 1, Day 2, Day 3". 
 
 # Complete Development Roadmap (Production + Hackathon)
 
+> **⚠️ Note:** This roadmap was drafted for the *original* GCP-based architecture.
+> The actual implementation uses the **FREE stack** (Gemini API → AI Studio, Firestore → SQLite,
+> BigQuery → DuckDB, etc.). All GCP service references below have been replaced with free,
+> open-source alternatives. See [`GServices.md`](./GServices.md) for the complete FREE stack reference.
+
 ## Estimated Time
 
 * **Hackathon MVP:** 5 days

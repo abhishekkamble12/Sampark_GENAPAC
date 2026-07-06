@@ -2,9 +2,21 @@ Absolutely. Since you're targeting a **Google ADK/LangChain hackathon** and want
 
 ---
 
-# Sampark - AI Decision Intelligence Platform
+# Sampark — AI Decision Intelligence Platform
 
 ## Production-Level System Design
+
+> **⚠️ Note:** This document describes the *original* production-level design using GCP services.
+> The actual **FREE stack implementation** replaces:
+> - Vertex AI → Gemini API (Google AI Studio — free)
+> - Firestore → SQLite (local, zero-config)
+> - BigQuery → DuckDB (in-process analytics)
+> - Cloud Pub/Sub → Python `asyncio.Queue`
+> - Cloud Run → uvicorn + Docker
+> - Cloud Storage → Local filesystem
+>
+> See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the current FREE stack architecture.
+> See [`GServices.md`](./GServices.md) for the complete FREE services reference.
 
 ---
 

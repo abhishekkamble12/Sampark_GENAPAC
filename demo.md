@@ -4,10 +4,21 @@ This guide provides step-by-step instructions to set up the **Sampark AI Platfor
 
 ---
 
-## 🛠️ Quick Start (3 Commands)
+## 🛠️ Quick Start
+
+### Option A: Docker (Recommended — Single Command)
 
 ```bash
-# 1. Install Backend dependencies
+docker build -t sampark-ai .
+docker run -p 8080:8080 -p 8000:8000 sampark-ai
+```
+
+Open **http://localhost:8080** and log in with `admin` / `password`.
+
+### Option B: Local Development (3 Commands)
+
+```bash
+# 1. Install all dependencies
 pip install -e ".[dev]"
 
 # 2. Install Frontend dependencies
@@ -59,14 +70,23 @@ python -m pytest
 
 ## 🕹️ Interactive Demo Walkthrough
 
-### Step 1: Start Backend API Gateway
+### Option A: Docker
+```bash
+docker build -t sampark-ai .
+docker run -p 8080:8080 -p 8000:8000 sampark-ai
+```
+Open **http://localhost:8080**
+
+### Option B: Local Dev
+
+#### Step 1: Start Backend API Gateway
 From the root directory:
 ```bash
 uvicorn backend.main:app --reload --port 8000
 ```
 *API docs at `http://localhost:8000/docs`*
 
-### Step 2: Start Frontend Client
+#### Step 2: Start Frontend Client
 From the `frontend` directory:
 ```bash
 npm run dev
@@ -107,14 +127,35 @@ npm run dev
 
 ## 🌐 Deployment (Optional — Free Platforms)
 
-### Deploy to Render (backend)
+### Unified Docker Container (Recommended)
+
+Build and run the entire application as a single container:
+
+```bash
+docker build -t sampark-ai .
+docker run -d -p 8080:8080 -p 8000:8000 --name sampark sampark-ai
+```
+
+- Frontend: **http://localhost:8080**
+- Backend API: **http://localhost:8000**
+- API Docs: **http://localhost:8000/docs**
+
+### Deploy to Docker Hub (via GitHub Actions)
+
+Push code to `main` or `version3` branch — the `docker.yml` workflow automatically:
+1. Runs tests
+2. Builds the Docker image
+3. Pushes to Docker Hub
+4. Runs a health check smoke test
+
+### Deploy to Render (legacy — backend only)
 1. Push your code to GitHub
 2. Go to [render.com](https://render.com) → New Web Service
 3. Connect your GitHub repo
 4. Set Build Command: `pip install -e ".[dev]"`
 5. Set Start Command: `uvicorn backend.main:app --host 0.0.0.0 --port 10000`
 
-### Deploy to Vercel (frontend)
+### Deploy to Vercel (legacy — frontend only)
 1. Connect your GitHub repo to [vercel.com](https://vercel.com)
 2. Set Root Directory: `frontend`
 3. Set Build Command: `npm run build`

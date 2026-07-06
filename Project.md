@@ -4,6 +4,11 @@ I would structure it like a professional design document of approximately **70â€
 
 ## Proposed Report Structure
 
+> **Note:** This document proposes a *comprehensive software design document* structure.
+> The actual implementation uses the **FREE stack** â€” all GCP services mentioned below
+> (Vertex AI, Firestore, BigQuery, Cloud Run, etc.) are replaced with free alternatives.
+> See [`GServices.md`](./GServices.md) for the complete FREE stack reference.
+
 ### Chapter 1: Executive Summary
 
 * Project overview

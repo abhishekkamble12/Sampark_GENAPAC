@@ -4,6 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)]()
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2-orange)]()
 [![Gemini API](https://img.shields.io/badge/Gemini%20API-Free-yellow)]()
+[![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED?logo=docker)]()
 [![Zero GCP Billing](https://img.shields.io/badge/Zero%20GCP%20Billing-success)]()
 
 **Sampark AI** is a multi-agent AI platform that transforms citizen complaints into actionable, policy-grounded municipal decisions. Built on **LangGraph** and **free Google technologies**, it orchestrates a pipeline of specialized AI agents — intake, validation, prediction, recommendation, workflow — to automate end-to-end civic issue resolution.
@@ -20,9 +21,9 @@
 | **Image Understanding** | Gemini Vision (API) | **Free** |
 | **Speech-to-Text** | Browser Web Speech API | **Free** |
 | **RAG / Vector Search** | FAISS + Gemini Embeddings | **Free** |
-| **Database** | SQLite | **Free** |
+| **Database** | SQLite (aiosqlite) | **Free** |
 | **Analytics** | DuckDB | **Free** |
-| **Deployment** | Render / Railway / Vercel | **Free** |
+| **Deployment** | Unified Docker Container | **Free** |
 | **Total Cost** | **$0/month** | 🎉 |
 
 ---
@@ -94,6 +95,7 @@
 - **📄 Knowledge Base Management** — Upload, list, and delete PDF policy documents for RAG indexing
 - **🎤 Multimodal Intake** — Text, image captioning (Gemini Vision), and audio transcription (Web Speech API)
 - **📈 Predictive Analytics** — Flood risk, road degradation, complaint volume forecasting
+- **🐳 Unified Docker Deployment** — Single multi-stage Dockerfile builds and runs both frontend + backend
 - **💰 Zero Cloud Cost** — Everything runs locally or on free tiers
 
 ---
@@ -103,7 +105,7 @@
 ### Backend (Python)
 | Component | Technology | Cost |
 | :--- | :--- | :--- |
-| **API Framework** | FastAPI (Python 3.11+) | Free |
+| **API Framework** | FastAPI (Python 3.12) | Free |
 | **AI Orchestration** | LangGraph, LangChain | Free |
 | **LLM** | Gemini 2.5 Flash (AI Studio) | **Free** 🔑 |
 | **Vector Search / RAG** | FAISS + Gemini Embeddings | **Free** |
@@ -116,17 +118,29 @@
 | Component | Technology |
 | :--- | :--- |
 | **Framework** | React 18 (Vite) |
-| **Styling** | Glassmorphism CSS |
-| **Fonts** | Google Fonts (Inter, Poppins) |
-| **Icons** | Material Icons |
+| **Styling** | Glassmorphism CSS (custom theme) |
+| **Fonts** | Google Fonts (Outfit, Plus Jakarta Sans) |
+| **Icons** | Lucide React |
+| **Charts** | Recharts |
 | **Speech** | Browser Web Speech API |
 
 ---
 
-## 🚀 Quick Start (3 Commands)
+## 🚀 Quick Start
+
+### Option 1: Docker (Recommended — Single Command)
 
 ```bash
-# 1. Install dependencies
+docker build -t sampark-ai .
+docker run -p 8080:8080 -p 8000:8000 sampark-ai
+```
+
+Open **http://localhost:8080** and log in with `admin` / `password`.
+
+### Option 2: Local Development
+
+```bash
+# 1. Install all dependencies
 pip install -e ".[dev]"
 
 # 2. Install frontend
@@ -134,11 +148,7 @@ cd frontend && npm install && cd ..
 
 # 3. Run tests
 python -m pytest
-```
 
-### Then Start the Platform
-
-```bash
 # Terminal 1 — Backend
 uvicorn backend.main:app --reload --port 8000
 
@@ -147,6 +157,10 @@ cd frontend && npm run dev
 ```
 
 Open **http://localhost:5173** and log in with `admin` / `password`.
+
+### Option 3: Windows One-Click Demo
+
+Double-click `start-demo.bat` — it installs deps and launches both servers.
 
 ---
 
@@ -181,16 +195,17 @@ sampark-genapac/
 ├── backend/                 # FastAPI Gateway
 │   ├── main.py              # REST endpoints & SSE streaming
 │   ├── config.py            # FREE stack configuration
-│   └── Dockerfile
+│   └── middleware.py        # JWT auth, rate limiting, logging
 ├── frontend/                # React 18 Vite SPA
-│   ├── src/App.jsx
-│   ├── src/api.js
-│   └── src/index.css
+│   ├── src/App.jsx          # Main UI (glassmorphism design)
+│   ├── src/api.js           # API client with JWT auth
+│   ├── src/index.css        # Full design system + responsive CSS
+│   └── theme.md             # Design system documentation
 ├── tools/                   # Service abstraction tools (FREE stack)
 │   ├── sqlite_tool.py       # SQLite database (replaces Firestore)
-│   ├── embeddings_tool.py   # FAISS + Gemini Embeddings (replaces Vertex AI)
+│   ├── embeddings_tool.py   # FAISS + Gemini Embeddings
 │   ├── bigquery_tool.py     # DuckDB analytics (replaces BigQuery)
-│   ├── firestore_tool.py    # Adapter for backward compatibility
+│   ├── firestore_tool.py    # SQLite adapter for compat
 │   ├── vision_tool.py       # Gemini Vision (AI Studio)
 │   ├── speech_tool.py       # Web Speech API mock
 │   └── maps_tool.py         # Google Maps geocoding
@@ -202,11 +217,41 @@ sampark-genapac/
 │   ├── escalation.py        # Task escalation logic
 │   └── health_score.py      # Community health score computation
 ├── .github/workflows/       # CI/CD
+│   ├── ci-cd.yml            # Test + deploy pipeline
+│   └── docker.yml           # Docker build & push to Docker Hub
+├── Dockerfile               # Unified multi-stage Dockerfile (frontend + backend)
+├── entrypoint.sh            # Container entrypoint (nginx + uvicorn)
+├── .dockerignore            # Build context exclusions
 ├── pyproject.toml           # Python project config
 ├── README.md                # This file
 ├── GServices.md             # FREE Google services reference
-└── TPT.md                   # Third-party services reference
+├── TPT.md                   # Third-party services reference
+├── ARCHITECTURE.md          # System architecture documentation
+├── system_design.md         # Production-level system design
+├── demo.md                  # Demo walkthrough guide
+└── roadmap.md               # Development roadmap
 ```
+
+---
+
+## 🐳 Docker Deployment
+
+Build and run the entire application in a single container:
+
+```bash
+# Build the unified image
+docker build -t sampark-ai .
+
+# Run with both services
+docker run -p 8080:8080 -p 8000:8000 sampark-ai
+
+# With custom API URL build arg
+docker build --build-arg VITE_API_BASE_URL=/api -t sampark-ai .
+```
+
+The container runs:
+- **nginx** on port **8080** → serves the React SPA
+- **uvicorn** on port **8000** → serves the FastAPI backend
 
 ---
 
@@ -225,6 +270,15 @@ python -m pytest -k "pbt"            # Property-based tests
 
 ---
 
+## 🔐 Security
+
+- **JWT Authentication** with bcrypt password hashing
+- **Role-Based Access Control** (Government Officer, Community Leader)
+- **Rate Limiting** — per-IP sliding window
+- **Input Validation** — Pydantic schemas, file size limits (50MB PDF)
+
+---
+
 ## 📊 Evaluation Metrics
 
 | Metric | Target | Current |
@@ -236,21 +290,14 @@ python -m pytest -k "pbt"            # Property-based tests
 
 ---
 
-## 🔐 Security
-
-- **JWT Authentication** with bcrypt password hashing
-- **Role-Based Access Control** (Government Officer, Community Leader)
-- **Rate Limiting** — per-IP sliding window
-- **Input Validation** — Pydantic schemas, file size limits (50MB PDF)
-
----
-
 ## 🙏 Acknowledgments
 
 - **Google Hackathon** — Gemini API, AI Studio, Google Fonts, Material Design
 - **LangChain / LangGraph** — Multi-agent orchestration framework
 - **FAISS** — Vector search (Meta AI)
 - **DuckDB** — In-process analytics
+- **Lucide** — Open-source icon library
+- **Recharts** — Charting library for React
 - **OpenWeatherMap, SendGrid, Twilio** — Optional integrations
 
 ---

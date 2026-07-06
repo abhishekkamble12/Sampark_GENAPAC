@@ -31,8 +31,9 @@ This document catalogs all **FREE Google technologies** used by the Sampark AI P
 | 6 | **Gemini 2.5 Pro** | AI/ML | Complex reasoning (used when needed) | ⚙️ Optional |
 | 7 | **Gemini Function Calling** | AI/ML | Structured output parsing from agent pipeline | ✅ Active |
 | 8 | **Google Maps Embed API** | Location | Map display in frontend (free quota) | ✅ Active |
-| 9 | **Google Fonts** | Frontend | Typography - Poppins, Inter fonts | ✅ Active |
-| 10 | **Material Icons** | Frontend | UI icons via Google Fonts CDN | ✅ Active |
+| 9 | **Google Fonts** | Frontend | Typography — Outfit, Plus Jakarta Sans fonts | ✅ Active |
+| 10 | **Material Icons** | Frontend | UI icons via Google Fonts CDN (imported, not actively used) | ⚙️ Deprecated |
+| 10b | **Lucide React** | Frontend | UI icons — primary icon library (`lucide-react`) | ✅ Active |
 | 11 | **Material Design** | Frontend | UI design system (glassmorphism theme) | ✅ Active |
 | 12 | **Firebase Auth (Spark)** | Auth | JWT-based authentication (demo mode built-in) | ⚙️ Optional |
 | 13 | **Google OAuth** | Auth | Sign-in via Google accounts | ⚙️ Future |
@@ -215,9 +216,12 @@ recognition.onresult = (event) => {
 ### Usage
 
 ```html
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<!-- Google Fonts: Outfit + Plus Jakarta Sans (premium geometric fonts) -->
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 ```
+
+> **Note:** The actual icon library used is **Lucide React** (`lucide-react` package, not Material Icons).
+> Material Icons stylesheet is imported in `index.html` but not actively used by any component.
 
 ---
 
