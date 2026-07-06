@@ -1,14 +1,10 @@
 """
-agents/checkpointing.py — Firestore-backed checkpoint persistence for the
-Sampark AI LangGraph pipeline.
+agents/checkpointing.py — Local Checkpoint Persistence (FREE replacement for Firestore)
 
-Every node transition persists a full ``GraphState`` snapshot to Firestore
-under the path::
+Every node transition persists a full GraphState snapshot to an in-memory
+dictionary (and optionally SQLite for persistence across restarts).
 
-    sessions/{session_id}/checkpoints/{node_name}
-
-On resume with an existing ``session_id``, the pipeline reads completed
-checkpoints and skips already-finished nodes.
+Replaces Firestore-backed checkpointing with zero cloud dependencies.
 """
 
 from __future__ import annotations
@@ -22,187 +18,111 @@ from agents.state import GraphState
 logger = logging.getLogger(__name__)
 
 
-class FirestoreCheckpointSaver:
-    """Persists and retrieves ``GraphState`` checkpoints in Firestore.
+class LocalCheckpointSaver:
+    """In-memory checkpoint saver with optional SQLite persistence.
 
-    Parameters
-    ----------
-    db:
-        An initialised ``google.cloud.firestore.AsyncClient`` instance.
-        Injected rather than created internally so it can be mocked in tests.
-    collection_prefix:
-        Top-level Firestore collection name.  Defaults to ``"sessions"``.
+    Replaces FirestoreCheckpointSaver. Stores checkpoints in memory
+    by default, with an option to persist to SQLite.
     """
 
-    def __init__(self, db: Any, collection_prefix: str = "sessions") -> None:
+    def __init__(self, db: Any = None, collection_prefix: str = "sessions"):
         self._db = db
         self._prefix = collection_prefix
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _session_ref(self, session_id: str):
-        return self._db.collection(self._prefix).document(session_id)
-
-    def _checkpoint_ref(self, session_id: str, node_name: str):
-        return (
-            self._db.collection(self._prefix)
-            .document(session_id)
-            .collection("checkpoints")
-            .document(node_name)
-        )
+        self._checkpoints: dict[str, dict[str, Any]] = {}
 
     @staticmethod
     def _utcnow_iso() -> str:
         return datetime.datetime.utcnow().isoformat() + "Z"
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
     async def save_checkpoint(
         self, session_id: str, node_name: str, state: GraphState
     ) -> None:
-        """Persist a ``GraphState`` snapshot after a node completes.
-
-        Writes to ``sessions/{session_id}/checkpoints/{node_name}`` and
-        updates the parent session document's ``last_checkpoint`` field.
-
-        Failures are logged but do **not** propagate — a checkpoint write
-        error must never crash the pipeline.
-
-        Parameters
-        ----------
-        session_id:
-            Unique pipeline run identifier from ``state["execution"]["session_id"]``.
-        node_name:
-            Name of the node that just completed (e.g. ``"validation_node"``).
-        state:
-            Current ``GraphState`` to snapshot.
-        """
+        """Persist a GraphState snapshot after a node completes."""
         now = self._utcnow_iso()
+        checkpoint_key = f"{session_id}:{node_name}"
         checkpoint_data = {
             "node_name": node_name,
             "state_snapshot": dict(state),
             "completed_at": now,
         }
-        if self._db is None:
-            from tools.firestore_tool import FirestoreTool
-            prefix = self._prefix
-            if prefix not in FirestoreTool._local_db:
-                FirestoreTool._local_db[prefix] = {}
-            if session_id not in FirestoreTool._local_db[prefix]:
-                FirestoreTool._local_db[prefix][session_id] = {}
-            if "checkpoints" not in FirestoreTool._local_db[prefix][session_id]:
-                FirestoreTool._local_db[prefix][session_id]["checkpoints"] = {}
-                
-            FirestoreTool._local_db[prefix][session_id]["checkpoints"][node_name] = checkpoint_data
-            FirestoreTool._local_db[prefix][session_id]["last_checkpoint"] = node_name
-            FirestoreTool._local_db[prefix][session_id]["updated_at"] = now
-            FirestoreTool._local_db[prefix][session_id]["status"] = state.get("execution", {}).get("status", "running")
-            logger.debug("Local checkpoint saved: session=%s node=%s", session_id, node_name)
-            return
 
-        try:
-            # Write checkpoint document
-            await self._checkpoint_ref(session_id, node_name).set(checkpoint_data)
-            # Update parent session metadata
-            await self._session_ref(session_id).set(
-                {"last_checkpoint": node_name, "updated_at": now},
-                merge=True,
-            )
-            logger.debug(
-                "Checkpoint saved: session=%s node=%s", session_id, node_name
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.error(
-                "Failed to save checkpoint session=%s node=%s: %s",
-                session_id,
-                node_name,
-                exc,
-                exc_info=True,
-            )
+        # Store in memory
+        self._checkpoints[checkpoint_key] = checkpoint_data
+
+        # Optionally persist to SQLite
+        if self._db is not None:
+            try:
+                session_data = {
+                    "checkpoints": {
+                        node_name: checkpoint_data,
+                    },
+                    "last_checkpoint": node_name,
+                    "updated_at": now,
+                    "status": state.get("execution", {}).get("status", "running"),
+                }
+
+                # Merge checkpoints into existing session
+                existing = await self._db.get_document(self._prefix, session_id)
+                if existing:
+                    existing.setdefault("checkpoints", {})[node_name] = checkpoint_data
+                    existing["last_checkpoint"] = node_name
+                    existing["updated_at"] = now
+                    existing["status"] = state.get("execution", {}).get("status", "running")
+                    await self._db.set_document(self._prefix, session_id, existing, merge=False)
+                else:
+                    await self._db.set_document(self._prefix, session_id, session_data)
+            except Exception:
+                logger.warning("Failed to persist checkpoint to SQLite (continuing)")
+
+        logger.debug("Checkpoint saved: session=%s node=%s", session_id, node_name)
 
     async def load_checkpoint(
         self, session_id: str, node_name: str
     ) -> GraphState | None:
-        """Load a persisted ``GraphState`` snapshot for the given node.
+        """Load a persisted GraphState snapshot."""
+        # Try memory first
+        checkpoint_key = f"{session_id}:{node_name}"
+        cp = self._checkpoints.get(checkpoint_key)
+        if cp:
+            return cp.get("state_snapshot")
 
-        Parameters
-        ----------
-        session_id:
-            Pipeline run identifier.
-        node_name:
-            Node whose checkpoint to retrieve.
+        # Try SQLite
+        if self._db is not None:
+            try:
+                session = await self._db.get_document(self._prefix, session_id)
+                if session:
+                    checkpoints = session.get("checkpoints", {})
+                    cp = checkpoints.get(node_name)
+                    if cp:
+                        return cp.get("state_snapshot")
+            except Exception:
+                pass
 
-        Returns
-        -------
-        GraphState or None
-            Deserialised state dict, or ``None`` if no checkpoint exists.
-        """
-        if self._db is None:
-            from tools.firestore_tool import FirestoreTool
-            prefix = self._prefix
-            session = FirestoreTool._local_db.get(prefix, {}).get(session_id, {})
-            checkpoint = session.get("checkpoints", {}).get(node_name)
-            return checkpoint.get("state_snapshot") if checkpoint else None
-
-        try:
-            doc = await self._checkpoint_ref(session_id, node_name).get()
-            if not doc.exists:
-                return None
-            data = doc.to_dict()
-            return data.get("state_snapshot")  # type: ignore[return-value]
-        except Exception as exc:  # noqa: BLE001
-            logger.error(
-                "Failed to load checkpoint session=%s node=%s: %s",
-                session_id,
-                node_name,
-                exc,
-                exc_info=True,
-            )
-            return None
+        return None
 
     async def list_completed_nodes(self, session_id: str) -> list[str]:
-        """Return the names of all nodes that have saved checkpoints.
+        """Return all completed node names for a session."""
+        # From memory
+        node_names = [
+            cp["node_name"]
+            for key, cp in self._checkpoints.items()
+            if key.startswith(f"{session_id}:")
+        ]
 
-        Parameters
-        ----------
-        session_id:
-            Pipeline run identifier.
+        # From SQLite (add any not already in memory)
+        if self._db is not None:
+            try:
+                session = await self._db.get_document(self._prefix, session_id)
+                if session:
+                    checkpoints = session.get("checkpoints", {})
+                    stored_nodes = list(checkpoints.keys())
+                    for node in stored_nodes:
+                        if node not in node_names:
+                            node_names.append(node)
+            except Exception:
+                pass
 
-        Returns
-        -------
-        list[str]
-            Ordered list of node names (Firestore document IDs) for which a
-            checkpoint document exists under this session.
-        """
-        if self._db is None:
-            from tools.firestore_tool import FirestoreTool
-            prefix = self._prefix
-            session = FirestoreTool._local_db.get(prefix, {}).get(session_id, {})
-            return list(session.get("checkpoints", {}).keys())
-
-        try:
-            docs = (
-                self._db.collection(self._prefix)
-                .document(session_id)
-                .collection("checkpoints")
-                .stream()
-            )
-            node_names: list[str] = []
-            async for doc in docs:
-                node_names.append(doc.id)
-            return node_names
-        except Exception as exc:  # noqa: BLE001
-            logger.error(
-                "Failed to list checkpoints for session=%s: %s",
-                session_id,
-                exc,
-                exc_info=True,
-            )
-            return []
+        return node_names
 
 
 # ---------------------------------------------------------------------------
@@ -211,29 +131,16 @@ class FirestoreCheckpointSaver:
 
 
 def create_checkpoint_wrapper(
-    saver: FirestoreCheckpointSaver,
-) -> Callable[[Callable[..., Awaitable[GraphState]], str], Callable[..., Awaitable[GraphState]]]:
+    saver: LocalCheckpointSaver,
+) -> Callable[
+    [Callable[..., Awaitable[GraphState]], str],
+    Callable[..., Awaitable[GraphState]],
+]:
     """Return a decorator factory that wraps node functions with checkpointing.
 
-    Usage::
-
+    Usage:
         wrapper = create_checkpoint_wrapper(saver)
         wrapped_node = wrapper(my_node_fn, "my_node")
-
-    The wrapper calls the original node function, then — on success — persists
-    the resulting state to Firestore.  If the checkpoint write fails, the
-    pipeline continues unaffected (the error is logged).
-
-    Parameters
-    ----------
-    saver:
-        Configured :class:`FirestoreCheckpointSaver` instance.
-
-    Returns
-    -------
-    Callable
-        A factory ``wrapper(node_fn, node_name)`` that produces a
-        checkpoint-enabled async node function.
     """
 
     def wrapper(

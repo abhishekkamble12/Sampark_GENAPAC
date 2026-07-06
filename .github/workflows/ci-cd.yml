@@ -1,4 +1,4 @@
-name: CI/CD — Sampark AI Platform
+name: CI/CD — Sampark AI Platform (FREE Stack)
 
 on:
   push:
@@ -8,13 +8,8 @@ on:
     branches:
       - main
 
-env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: ${{ vars.GCP_REGION }}
-
 # ──────────────────────────────────────────────────────────────────────────────
-# Job 1 — Test
-# Runs on every push and pull_request to main.
+# Job 1 — Test (runs on every push and PR)
 # ──────────────────────────────────────────────────────────────────────────────
 jobs:
   test:
@@ -25,10 +20,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
           cache: "pip"
 
       - name: Install dependencies (including dev extras)
@@ -37,12 +32,12 @@ jobs:
       - name: Run pytest
         run: pytest --tb=short -q
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Job 2 — Build & Push to Artifact Registry
-# Runs only on push to main, after tests pass.
-# ──────────────────────────────────────────────────────────────────────────────
-  build-and-push:
-    name: Build and Push Docker Images
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 2 — Deploy to free hosting platforms (Render / Railway)
+  # Runs only on push to main, after tests pass.
+  # ────────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy Application
     runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -51,122 +46,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud via Workload Identity Federation
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ secrets.GCP_ARTIFACT_REGISTRY }} --quiet
-
-      # ── api-gateway ────────────────────────────────────────────────────────
-      - name: Build api-gateway image
+      - name: Deploy Backend to Render
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
         run: |
-          docker build \
-            --file backend/Dockerfile \
-            --tag ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/api-gateway:${{ github.sha }} \
-            --tag ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/api-gateway:latest \
-            .
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
 
-      - name: Push api-gateway image
+      - name: Deploy Frontend to Vercel
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
         run: |
-          docker push ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/api-gateway:${{ github.sha }}
-          docker push ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/api-gateway:latest
+          npx vercel --token ${{ secrets.VERCEL_TOKEN }} --prod --yes
 
-      # ── langgraph-engine ───────────────────────────────────────────────────
-      - name: Build langgraph-engine image
+      - name: Build Docker image (optional — for Docker Hub)
+        if: ${{ secrets.DOCKER_USERNAME != '' }}
         run: |
-          docker build \
-            --file langgraph/Dockerfile \
-            --tag ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/langgraph-engine:${{ github.sha }} \
-            --tag ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/langgraph-engine:latest \
-            .
-
-      - name: Push langgraph-engine image
-        run: |
-          docker push ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/langgraph-engine:${{ github.sha }}
-          docker push ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/langgraph-engine:latest
-
-      # ── notification-worker ────────────────────────────────────────────────
-      # Shares the langgraph/Dockerfile base; CMD is overridden at Cloud Run deploy time.
-      - name: Build notification-worker image
-        run: |
-          docker build \
-            --file langgraph/Dockerfile \
-            --tag ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/notification-worker:${{ github.sha }} \
-            --tag ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/notification-worker:latest \
-            .
-
-      - name: Push notification-worker image
-        run: |
-          docker push ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/notification-worker:${{ github.sha }}
-          docker push ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/notification-worker:latest
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Job 3 — Deploy to Cloud Run + Cloud Functions
-# Runs only on push to main, after images are pushed.
-# ──────────────────────────────────────────────────────────────────────────────
-  deploy:
-    name: Deploy to Google Cloud
-    runs-on: ubuntu-latest
-    needs: build-and-push
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Authenticate to Google Cloud via Workload Identity Federation
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      # ── Cloud Run services ─────────────────────────────────────────────────
-      - name: Deploy api-gateway to Cloud Run
-        run: |
-          gcloud run deploy api-gateway \
-            --image ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/api-gateway:${{ github.sha }} \
-            --region ${{ vars.GCP_REGION }} \
-            --project ${{ secrets.GCP_PROJECT_ID }} \
-            --quiet
-
-      - name: Deploy langgraph-engine to Cloud Run
-        run: |
-          gcloud run deploy langgraph-engine \
-            --image ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/langgraph-engine:${{ github.sha }} \
-            --region ${{ vars.GCP_REGION }} \
-            --project ${{ secrets.GCP_PROJECT_ID }} \
-            --quiet
-
-      - name: Deploy notification-worker to Cloud Run
-        run: |
-          gcloud run deploy notification-worker \
-            --image ${{ secrets.GCP_ARTIFACT_REGISTRY }}/sampark/notification-worker:${{ github.sha }} \
-            --region ${{ vars.GCP_REGION }} \
-            --project ${{ secrets.GCP_PROJECT_ID }} \
-            --quiet
-
-      # ── Cloud Functions ────────────────────────────────────────────────────
-      - name: Deploy health-score-function Cloud Function
-        run: |
-          gcloud functions deploy health-score-function \
-            --region ${{ vars.GCP_REGION }} \
-            --project ${{ secrets.GCP_PROJECT_ID }} \
-            --source functions/ \
-            --entry-point compute_health_score \
-            --runtime python312 \
-            --trigger-topic health-score-updated \
-            --quiet
-
-      - name: Deploy escalation-scheduler Cloud Function
-        run: |
-          gcloud functions deploy escalation-scheduler \
-            --region ${{ vars.GCP_REGION }} \
-            --project ${{ secrets.GCP_PROJECT_ID }} \
-            --source functions/ \
-            --entry-point escalation_scheduler \
-            --runtime python312 \
-            --trigger-topic task-escalated \
-            --quiet
+          docker build -t sampark-backend:latest -f backend/Dockerfile .
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker tag sampark-backend:latest ${{ secrets.DOCKER_USERNAME }}/sampark-backend:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/sampark-backend:latest
