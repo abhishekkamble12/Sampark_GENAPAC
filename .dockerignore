@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.hypothesis/
+*.duckdb
+*.duckdb.wal
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Data
+data/*
+!data/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+*.env.local
+
+# Logs
+*.log
