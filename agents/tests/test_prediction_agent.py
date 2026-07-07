@@ -25,11 +25,11 @@ def _make_state(weather=None, analytics=None, issues=None) -> GraphState:
 @pytest.mark.asyncio
 async def test_insufficient_context_guard():
     node = make_prediction_node()
-    state = _make_state(weather=None)  # missing weather
+    state = _make_state(weather={})  # empty dict is falsy
     result = await node(state)
     assert result["prediction"]["error"] == "insufficient_context"
     
-    state2 = _make_state(analytics=False) # missing analytics
+    state2 = _make_state(analytics={}) # empty dict is falsy
     result2 = await node(state2)
     assert result2["prediction"]["error"] == "insufficient_context"
 

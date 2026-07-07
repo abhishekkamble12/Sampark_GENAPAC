@@ -75,7 +75,7 @@ async def test_firestore_retry():
     # To avoid tests taking 2s, we mock the asyncio.sleep in the agent module
     import agents.workflow_agent
     orig_sleep = agents.workflow_agent.asyncio.sleep
-    agents.workflow_agent.asyncio.sleep = lambda x: asyncio.sleep(0.001)
+    agents.workflow_agent.asyncio.sleep = lambda x: orig_sleep(0.001)
     
     try:
         # First attempt fails, second succeeds

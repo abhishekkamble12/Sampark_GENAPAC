@@ -1,6 +1,8 @@
 # Sampark AI Platform
 
-Sampark AI is a state-of-the-art Community Decision Intelligence Platform. It leverages a multi-agent LangGraph pipeline, Vertex AI Search (RAG), Firestore, and BigQuery to process citizen issue reports, perform risk assessments, determine optimal resolution recommendations, and dispatch task workflows.
+Sampark AI turns citizen complaints into explainable, policy-grounded government action using multi-agent AI, RAG, risk prediction, and live task routing.
+
+> *Cities do not need another complaint form. They need a decision intelligence layer that validates reports, predicts risk, cites policy, routes tasks, and helps officers act faster.*
 
 ---
 
@@ -113,31 +115,25 @@ Once the platform is running locally, follow these steps to experience the compl
 ### 1. Authentication
 - Open `http://localhost:5173` in your browser.
 - **Officer Login**: Use username `admin` and password `password`.
-- **Leader Login**: Use username `leader_w1` and password `password`.
 
 ### 2. Citizen Issue Report Portal
 - Go to the **Report Issue** tab.
-- Enter a description of a municipal complaint (e.g., *"Large water leak on the main road in Ward 1 causing road degradation."*).
+- Click **✨ Quick Fill Sample** or enter a description (e.g., *"Large water leak on the main road in Ward 1 causing road degradation."*).
 - Select a Ward ID and click **Submit to Decision Engine**.
-- **Real-Time Agent Progress**: An EventSource SSE stream (`/chat/stream/{session_id}`) will display node execution checkpoints (e.g. `Intake Node`, `Validation Node`, `Workflow Node`) as they complete.
-- **Decision Results**: When processing completes, you will see:
-  - Generated **Session ID** and **Issue ID**.
-  - **Assigned Department** (e.g., *Water Supply Department*).
-  - **Validation Confidence Score** (e.g., *95%*).
-  - **Next Recommended Action** (RAG grounded recommendation).
-  - **Citizen-facing NLP Message** formulated by response nodes.
+- **Real-Time Agent Progress**: An EventSource SSE stream will display node execution checkpoints (`Intake Node`, `Validation Node`, `Workflow Node`) as they complete.
+- **Decision Results**: When processing completes, you will see the generated Session ID, Assigned Department, Validation Confidence Score, and the **AI Decision Trace** containing the exact **Policy Citation**.
 
 ### 3. Officer Decision Intelligence Dashboard
 - Go to the **Dashboard** tab.
-- Monitor metrics like the **Community Health Score** and count of **Critical Open Tasks**.
+- Inspect the **Critical Action Queue** showing priority tasks with real-time **SLA Countdowns** and **Estimated Impact**.
+- Use the **Approve**, **Escalate**, or **Request Evidence** buttons to manage human-in-the-loop workflows.
 - See **Geospatial Risk Levels** per ward visualized on risk score bars.
-- Inspect the **Critical Action List** showing priority tasks.
-- **Real-Time Push Alerts**: Keep multiple tabs open and file new reports in one. The dashboard in the other tab will receive push notifications via SSE stream (`/analytics/dashboard/stream`) of new task creations and status updates within 5 seconds.
 
-### 4. Knowledge Base Administration
+### 4. The "Wow Moment": Dynamic Policy Grounding
 - Go to the **Knowledge Base** tab (visible to Admin/Officer).
-- Upload PDF policy acts (max 50MB) to index them into Vertex AI Search.
-- View and manage embedded policy documents with cascaded index deletion support.
+- Upload a new dummy policy document named `Drone Inspection Protocol.pdf` containing the text: *"All severe structural complaints require drone inspection."*
+- Go back to **Report Issue** and submit a related complaint.
+- Watch the AI recommendation dynamically change to cite your new protocol and recommend drone deployment! This proves the RAG pipeline operates locally and dynamically.
 
 ---
 
@@ -177,3 +173,21 @@ terraform init
 terraform plan
 terraform apply
 ```
+
+---
+
+## 🖼️ Screenshots
+
+Below are high-fidelity mockups of the Sampark AI platform interface showing the complete decision intelligence flow:
+
+### 1. Citizen Report Portal
+![Citizen Report Portal](file:///C:/Users/Abhishek/.gemini/antigravity-ide/brain/2856b871-5636-45f3-b0e7-a86ffaffb4cc/report_1783444390112.png)
+
+### 2. AI Decision Trace Panel & Agent Reasoning
+![AI Decision Trace](file:///C:/Users/Abhishek/.gemini/antigravity-ide/brain/2856b871-5636-45f3-b0e7-a86ffaffb4cc/ai_trace_1783444406723.png)
+
+### 3. Officer Decision Intelligence Command Center
+![Officer Command Center Dashboard](file:///C:/Users/Abhishek/.gemini/antigravity-ide/brain/2856b871-5636-45f3-b0e7-a86ffaffb4cc/dashboard_1783444375151.png)
+
+### 4. Knowledge Base Administration
+![Knowledge Base](file:///C:/Users/Abhishek/.gemini/antigravity-ide/brain/2856b871-5636-45f3-b0e7-a86ffaffb4cc/knowledge_base_1783444421485.png)

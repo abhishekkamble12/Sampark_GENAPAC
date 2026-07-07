@@ -140,6 +140,20 @@ class ApiClient {
     });
   }
 
+  async performTaskAction(taskId, action) {
+    return await this.request(`/tasks/${encodeURIComponent(taskId)}/action`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action })
+    });
+  }
+
+  async resetDemo() {
+    return await this.request('/demo/reset', {
+      method: 'POST'
+    });
+  }
+
   getStreamUrl(endpoint) {
     return `${BASE_URL}${endpoint}`;
   }

@@ -25,7 +25,7 @@ Retrieved Policies:
 {policies}
 
 Respond strictly with the following JSON schema:
-{{"action": "string", "rationale": "string", "cited_policies": ["string"]}}
+{{"action": "string", "rationale": "string", "cited_policies": ["string"], "estimated_impact": "string"}}
 """
 
 class Generator:

@@ -8,6 +8,11 @@ import httpx
 
 from tools.maps_tool import MapsTool
 
+@pytest.fixture(autouse=True)
+def _patch_app_mode():
+    with patch("backend.config.settings.APP_MODE", "production"):
+        yield
+
 
 def _make_geocode_response(lat=18.52, lng=73.86, address="MG Road, Pune") -> dict:
     return {

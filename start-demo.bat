@@ -5,8 +5,8 @@ echo               SAMPARK AI PLATFORM - DEMO LAUNCHER
 echo =======================================================================
 echo.
 
-echo [1/3] Verifying and installing Python backend dependencies...
-pip install -e ".[dev]"
+echo [1/3] Verifying and installing Python backend dependencies (suppressing warnings)...
+pip install -q -e ".[dev]" >nul 2>&1
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Python dependency installation failed!
     pause
@@ -15,8 +15,9 @@ if %ERRORLEVEL% neq 0 (
 echo.
 
 echo [2/3] Verifying and installing React frontend dependencies...
+echo Please wait, this may take a minute. Do not close this window!
 cd frontend
-call npm install
+call npm install --no-audit --no-fund --loglevel=error
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Frontend npm install failed!
     cd ..

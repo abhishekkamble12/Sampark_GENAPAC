@@ -61,6 +61,7 @@ def make_recommendation_node(
                 result["action"] = gen_data.get("action")
                 result["rationale"] = gen_data.get("rationale")
                 result["cited_policies"] = gen_data.get("cited_policies", [])
+                result["estimated_impact"] = gen_data.get("estimated_impact") or "Reduces response latency"
                 
                 # 4. Implement Priority Matrix (10.3)
                 flood_risk = prediction.get("flood_risk") or 0.0

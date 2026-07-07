@@ -81,12 +81,13 @@ def supervisor_router(state: GraphState) -> str:
         One of ``"error_response_node"``, ``"low_confidence_node"``, or
         ``"data_intelligence_node"``.
     """
+    if state.get("issue") and state["issue"].get("type") not in KNOWN_ISSUE_TYPES:
+        state["issue"]["type"] = "other"
+        
     if state.get("intake_error"):
         return "error_response_node"
     if state["validation"]["status"] == "low_confidence":
         return "low_confidence_node"
-    if state["issue"]["type"] not in KNOWN_ISSUE_TYPES:
-        state["issue"]["type"] = "other"
     return "data_intelligence_node"
 
 
@@ -132,8 +133,15 @@ from agents.recommendation_agent import make_recommendation_node
 from agents.workflow_agent import make_workflow_node
 
 from backend.config import settings
-import google.generativeai as genai
-from google.cloud import firestore_v1, pubsub_v1
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
+try:
+    from google.cloud import firestore_v1, pubsub_v1
+except ImportError:
+    firestore_v1 = None
+    pubsub_v1 = None
 
 from tools.speech_tool import SpeechTool
 from tools.vision_tool import VisionTool
@@ -165,20 +173,50 @@ class MockGeminiModel:
                     break
             return MockResponse(f'{{"type": "{normal_type}", "location": "MG Road", "description": "pothole on MG Road"}}')
         elif "retrieved" in prompt_str or "Retrieved Policies" in prompt_str:
-            if "Urban Flood" in prompt_str:
-                doc_name = "Urban Flood Response Guidelines"
+            # WOW MOMENT: Dynamically check if the user uploaded a custom policy!
+            # The prompt contains "[Document: [doc_name], Page: [page]]"
+            import re
+            custom_doc_match = re.search(r"\[Document:\s*(.+?),\s*Page:", prompt_str)
+            custom_text_match = re.search(r"\]\n(.*?)(?=\n\n\[Document:|$)", prompt_str, re.DOTALL)
+            
+            doc_name = custom_doc_match.group(1).strip() if custom_doc_match else "General Municipal Code"
+            policy_text = custom_text_match.group(1).strip() if custom_text_match else ""
+            
+            # Extract clean page number if present
+            page_match = re.search(r"Page:\s*(\d+)\]", prompt_str)
+            page_num = page_match.group(1) if page_match else "1"
+            
+            impact = "Reduces response latency"
+            
+            if "Urban Flood" in doc_name:
                 action = "Deploy storm water pumps to low-lying areas in lowland zone"
                 rationale = "Lowland drainage overflow requires immediate storm pump deployment under Section 1.5 of the Urban Flood Response Guidelines."
-            elif "Water Leakage" in prompt_str:
-                doc_name = "Water Leakage Emergency Protocol"
+                impact = "Reduces flood risk by 30%"
+            elif "Water Leakage" in doc_name:
                 action = "Shut off local main pipeline valve and dispatch repair crew"
                 rationale = "Pipeline leakages must be isolated and resolved within 24 hours per Section 3.1 of the Water Leakage Emergency Protocol."
-            else:
-                doc_name = "Road Maintenance Policy"
+                impact = "Conserves 500L water per day"
+            elif "Road Maintenance" in doc_name or "Road Repair" in doc_name:
                 action = "Dispatch Public Works crew for pothole repair within 72 hours"
                 rationale = "High-risk potholes near school zones must be prioritized and patched within 72 hours per Section 4.2 of the Road Maintenance Policy."
+                impact = "Reduces road hazard risk by 45%"
+            else:
+                # Dynamic adaptation to ANY newly uploaded policy
+                action = f"Execute action based on {doc_name}"
+                rationale = f"Policy '{doc_name}' (Page {page_num}) specifically mandates this response: '{policy_text[:100]}...'"
+                
+                # If we detect specific keywords in the uploaded text, make the action smarter!
+                if "drone" in policy_text.lower():
+                    action = "Deploy inspection drones immediately"
+                    impact = "Accelerates damage assessment by 80%"
+                elif "contractor" in policy_text.lower():
+                    action = "Escalate to external contractor for expedited resolution"
+                    impact = "Leverages private sector efficiency"
+                elif "penalty" in policy_text.lower():
+                    action = "Issue penalty notice and dispatch inspection team"
+                    impact = "Enforces compliance protocol"
             
-            return MockResponse(f'{{"action": "{action}", "rationale": "{rationale}", "cited_policies": ["{doc_name}"]}}')
+            return MockResponse(f'{{"action": "{action}", "rationale": "{rationale}", "cited_policies": ["{doc_name}"], "estimated_impact": "{impact}"}}')
         return MockResponse('{}')
 
 

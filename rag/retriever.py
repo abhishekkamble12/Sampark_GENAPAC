@@ -26,6 +26,33 @@ class Retriever:
             from backend.config import settings
             if settings.APP_MODE == "local":
                 q_lower = query.lower()
+                import re
+                words = set(re.findall(r'\b[a-z]{3,}\b', q_lower))
+                
+                from tools.firestore_tool import FirestoreTool
+                all_kb = FirestoreTool._local_db.get("knowledge_base", {})
+                
+                scored_chunks = []
+                for chunk_id, chunk in all_kb.items():
+                    text = chunk.get("text", "").lower()
+                    doc_name = chunk.get("doc_name", "").lower()
+                    
+                    score = 0
+                    for word in words:
+                        if word in text:
+                            score += text.count(word) * 2
+                        if word in doc_name:
+                            score += doc_name.count(word) * 5
+                            
+                    if score > 0:
+                        scored_chunks.append((score, chunk))
+                        
+                if scored_chunks:
+                    # Sort by score descending
+                    scored_chunks.sort(key=lambda x: x[0], reverse=True)
+                    return [item[1] for item in scored_chunks[:3]], False
+                
+                # Fallback to defaults
                 if "flood" in q_lower or "drain" in q_lower:
                     doc_name, chunk_idx = "urban_flood_guidelines", 0
                 elif "water" in q_lower or "leak" in q_lower:

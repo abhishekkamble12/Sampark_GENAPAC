@@ -246,6 +246,9 @@ def make_intake_node(
                 if location and isinstance(location, dict):
                     merged_location["address"] = location.get("address") or merged_location.get("address")
 
+                if not merged_location:
+                    merged_location = None
+
                 issue: IssueObject = {
                     "id": issue_id_to_use,
                     "type": canonical_type,

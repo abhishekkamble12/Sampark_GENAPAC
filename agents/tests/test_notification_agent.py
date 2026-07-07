@@ -38,8 +38,8 @@ async def test_fallback_chain_whatsapp_to_email():
     
     # speed up sleep
     import agents.notification_agent
-    orig_sleep = agents.notification_agent.asyncio.sleep
-    agents.notification_agent.asyncio.sleep = lambda x: asyncio.sleep(0.001)
+    orig_delay = agents.notification_agent._RETRY_DELAY
+    agents.notification_agent._RETRY_DELAY = 0.001
     
     try:
         await agent.handle_pubsub_event("task-created", {"user_id": "u1", "task_id": "t1"})
@@ -53,7 +53,7 @@ async def test_fallback_chain_whatsapp_to_email():
         assert fs.logs[1]["channel"] == "whatsapp" and fs.logs[1]["status"] == "failed"
         assert fs.logs[2]["channel"] == "email" and fs.logs[2]["status"] == "success"
     finally:
-        agents.notification_agent.asyncio.sleep = orig_sleep
+        agents.notification_agent._RETRY_DELAY = orig_delay
 
 @pytest.mark.asyncio
 async def test_escalation_routing():

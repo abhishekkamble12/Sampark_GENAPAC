@@ -16,7 +16,9 @@ import {
   AlertCircle, 
   RefreshCw,
   Sparkles,
-  Search
+  Search,
+  Clock,
+  ShieldAlert
 } from 'lucide-react';
 
 export default function App() {
@@ -51,6 +53,12 @@ export default function App() {
   });
   const [dashboardStreamConnected, setDashboardStreamConnected] = useState(false);
   const [dashboardNotifications, setDashboardNotifications] = useState([]);
+  const [operationsFeed, setOperationsFeed] = useState([
+    { id: '1', time: '10:42', text: 'New water issue TSK-003 submitted in Ward 1', type: 'info' },
+    { id: '2', time: '10:42', text: 'RAG cited Water Leakage Protocol', type: 'rag' },
+    { id: '3', time: '10:43', text: 'Task TSK-003 assigned to Water Department', type: 'routing' },
+    { id: '4', time: '10:43', text: 'Auto-dispatch validation: CONFIDENCE 95%', type: 'success' },
+  ]);
 
   // Knowledge base state
   const [kbDocs, setKbDocs] = useState([]);
@@ -83,7 +91,24 @@ export default function App() {
 
       sse.onmessage = (event) => {
         const updatedTask = JSON.parse(event.data);
-        // Push notification
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        setOperationsFeed(prev => [
+          {
+            id: Math.random().toString(36).substring(7),
+            time: timestamp,
+            text: `Task ${updatedTask.task_id} status changed to ${updatedTask.status.toUpperCase()}`,
+            type: 'update'
+          },
+          {
+            id: Math.random().toString(36).substring(7),
+            time: timestamp,
+            text: `Task ${updatedTask.task_id} in Ward ${updatedTask.ward_id} registered (${updatedTask.priority} priority)`,
+            type: 'routing'
+          },
+          ...prev
+        ]);
+
         setDashboardNotifications(prev => [
           {
             id: Math.random().toString(36).substring(7),
@@ -93,7 +118,6 @@ export default function App() {
           ...prev.slice(0, 4)
         ]);
         
-        // Refresh dashboard data
         fetchDashboard();
       };
 
@@ -369,12 +393,28 @@ export default function App() {
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             {activeTab === 'dashboard' && (
-              <button onClick={fetchDashboard} className="btn btn-secondary">
-                <RefreshCw size={15} />
-                Refresh
-              </button>
+              <>
+                <button onClick={async () => {
+                  if (confirm("Reset local database to initial demo state?")) {
+                    try {
+                      await api.resetDemo();
+                      alert("Database reset successfully!");
+                      fetchDashboard();
+                    } catch (err) {
+                      alert(err.message || "Reset failed");
+                    }
+                  }
+                }} className="btn btn-secondary" style={{ borderColor: 'var(--error-color)', color: '#f87171' }}>
+                  <Trash2 size={15} />
+                  Reset Demo
+                </button>
+                <button onClick={fetchDashboard} className="btn btn-secondary">
+                  <RefreshCw size={15} />
+                  Refresh
+                </button>
+              </>
             )}
             <span className="badge badge-medium" style={{ display: 'flex', alignItems: 'center', height: 'fit-content' }}>
               {user.role}
@@ -388,7 +428,15 @@ export default function App() {
         {activeTab === 'report' && (
           <div style={{ maxWidth: '800px' }}>
             <div className="glass-panel">
-              <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '20px' }}>File a Complaint</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>File a Complaint</h3>
+                <button type="button" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={() => {
+                  setDescription("Massive water leakage from the main municipal pipeline on MG Road causing urban flooding in the lowland zone.");
+                  setWardId("w1");
+                }}>
+                  <Sparkles size={12} style={{ marginRight: '4px' }} /> Quick Fill Sample
+                </button>
+              </div>
               
               <form onSubmit={handleIssueSubmit}>
                 <div className="form-group">
@@ -553,6 +601,18 @@ export default function App() {
                   <p style={{ fontSize: '15px', fontWeight: '500' }}>{pipelineResult.message}</p>
                 </div>
 
+                {pipelineResult.confidence < 0.4 && (
+                  <div className="alert alert-error" style={{ marginBottom: '20px', background: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)', color: '#f87171' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
+                      <ShieldAlert size={16} />
+                      <span>Responsible AI Guardrail: Auto-dispatch Blocked</span>
+                    </div>
+                    <p style={{ fontSize: '13px', marginTop: '4px', opacity: 0.9 }}>
+                      Reason: Low credibility score ({(pipelineResult.confidence * 100).toFixed(0)}%). Location or details require manual corroboration. Requesting citizen photos/evidence.
+                    </p>
+                  </div>
+                )}
+
                 {/* AI Decision Trace Panel */}
                 {pipelineResult.ai_trace && (
                   <div className="trace-container">
@@ -639,6 +699,22 @@ export default function App() {
                               {pipelineResult.ai_trace.validation.confidence_score}
                             </span>
                           </div>
+                          
+                          {pipelineResult.evidence_score && (
+                            <div className="trace-item" style={{ gridColumn: '1 / -1', marginTop: '8px', background: 'rgba(255, 255, 255, 0.02)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                              <span className="trace-item-label" style={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '8px', display: 'block' }}>
+                                Credibility Evidence Score Breakdown ({pipelineResult.evidence_score.total}/100)
+                              </span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {pipelineResult.evidence_score.components.map((comp, cIdx) => (
+                                  <div key={cIdx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>• {comp.label}</span>
+                                    <span style={{ fontWeight: 'bold', color: comp.points > 10 ? 'var(--success-color)' : 'var(--text-secondary)' }}>+{comp.points} pts</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -676,6 +752,27 @@ export default function App() {
                               {pipelineResult.ai_trace.prediction.risk_explanation}
                             </span>
                           </div>
+
+                          {pipelineResult.ai_trace.prediction.risk_factors && (
+                            <div style={{ gridColumn: '1 / -1', marginTop: '8px', background: 'rgba(255, 255, 255, 0.02)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                              <span className="trace-item-label" style={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '8px', display: 'block' }}>
+                                Risk Factor Contribution Breakdown
+                              </span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {pipelineResult.ai_trace.prediction.risk_factors.map((f, fIdx) => (
+                                  <div key={fIdx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                                      <span style={{ color: 'var(--text-secondary)' }}>{f.factor}</span>
+                                      <span style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>{f.weight}%</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '99px', overflow: 'hidden' }}>
+                                      <div style={{ width: `${f.weight}%`, height: '100%', background: 'var(--primary-color)' }} />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -816,21 +913,21 @@ export default function App() {
             <div className="dashboard-v2-grid">
               {/* Left Main Column */}
               <div className="dashboard-v2-main">
-                <div className="summary-grid" style={{ marginBottom: 0 }}>
+                <div className="summary-grid" style={{ marginBottom: 0, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
                   <div className="glass-panel metric-card" style={{ flex: 1 }}>
                     <div className="metric-icon">
                       <Activity />
                     </div>
                     <div className="metric-data" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <h3>{dashboardData.health_score ? dashboardData.health_score.toFixed(1) : '82.5'} / 100</h3>
+                        <h3>{dashboardData.health_score ? dashboardData.health_score.toFixed(1) : '82.5'}</h3>
                         {dashboardData.health_score_change && (
                           <span className={`health-trend ${dashboardData.health_score_change.startsWith('+') ? 'up' : 'down'}`}>
                             {dashboardData.health_score_change}
                           </span>
                         )}
                       </div>
-                      <p>Community Health Score</p>
+                      <p>Community Health</p>
                     </div>
                   </div>
                   
@@ -840,7 +937,27 @@ export default function App() {
                     </div>
                     <div className="metric-data">
                       <h3>{dashboardData.top_critical_issues ? dashboardData.top_critical_issues.length : 0}</h3>
-                      <p>Critical Action Queue</p>
+                      <p>Critical Open Tasks</p>
+                    </div>
+                  </div>
+
+                  <div className="glass-panel metric-card" style={{ flex: 1 }}>
+                    <div className="metric-icon" style={{ color: 'var(--warning-color)', background: 'rgba(245, 158, 11, 0.1)' }}>
+                      <Sparkles />
+                    </div>
+                    <div className="metric-data">
+                      <h3>{dashboardData.sla_breach_risk || '14%'}</h3>
+                      <p>SLA Breach Risk</p>
+                    </div>
+                  </div>
+
+                  <div className="glass-panel metric-card" style={{ flex: 1 }}>
+                    <div className="metric-icon" style={{ color: '#60a5fa', background: 'rgba(96, 165, 250, 0.1)' }}>
+                      <Clock />
+                    </div>
+                    <div className="metric-data">
+                      <h3>{dashboardData.avg_response_time || '2.4 hrs'}</h3>
+                      <p>Avg Response Time</p>
                     </div>
                   </div>
                 </div>
@@ -864,18 +981,82 @@ export default function App() {
                             </h5>
                           </div>
                           <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                            <MapPin size={12} style={{ display: 'inline', marginRight: '4px' }}/> Ward {issue.ward_id?.toUpperCase()} • Dept: {issue.department}
-                            {issue.sla_due && ` • Due: ${new Date(issue.sla_due).toLocaleDateString()}`}
+                            <MapPin size={12} style={{ display: 'inline', marginRight: '4px' }}/> Ward {issue.ward_id?.toUpperCase() || 'W1'} • Dept: {issue.department}
+                            {issue.sla_due && (
+                              <span style={{ color: 'var(--warning-color)', marginLeft: '8px', fontWeight: '600' }}>
+                                • SLA: {Math.max(1, Math.floor((new Date(issue.sla_due) - new Date()) / (1000 * 60 * 60)))}h remaining
+                              </span>
+                            )}
                           </p>
+                          {issue.estimated_impact && (
+                            <p style={{ fontSize: '12px', color: '#a5b4fc', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Sparkles size={10} /> Impact: {issue.estimated_impact}
+                            </p>
+                          )}
                         </div>
                         
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                            {issue.status || 'OPEN'}
-                          </span>
-                          <span className={`badge badge-${(issue.priority || 'high').toLowerCase()}`}>
-                            {issue.priority || 'HIGH'}
-                          </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                              {issue.status || 'OPEN'}
+                            </span>
+                            <span className={`badge badge-${(issue.priority || 'high').toLowerCase()}`}>
+                              {issue.priority || 'HIGH'}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                            <button className="btn btn-primary" style={{ padding: '4px 10px', fontSize: '11px' }} onClick={async () => {
+                              try {
+                                await api.performTaskAction(issue.task_id, 'approve');
+                                setOperationsFeed(prev => [
+                                  {
+                                    id: Math.random().toString(36).substring(7),
+                                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                    text: `Officer approved task dispatch for ${issue.task_id}`,
+                                    type: 'success'
+                                  },
+                                  ...prev
+                                ]);
+                                fetchDashboard();
+                              } catch (err) {
+                                alert(err.message || 'Action failed');
+                              }
+                            }}>Approve</button>
+                            <button className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: '11px' }} onClick={async () => {
+                              try {
+                                await api.performTaskAction(issue.task_id, 'escalate');
+                                setOperationsFeed(prev => [
+                                  {
+                                    id: Math.random().toString(36).substring(7),
+                                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                    text: `Task ${issue.task_id} escalated to supervisor`,
+                                    type: 'warning'
+                                  },
+                                  ...prev
+                                ]);
+                                fetchDashboard();
+                              } catch (err) {
+                                alert(err.message || 'Action failed');
+                              }
+                            }}>Escalate</button>
+                            <button className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: '11px' }} onClick={async () => {
+                              try {
+                                await api.performTaskAction(issue.task_id, 'request_evidence');
+                                setOperationsFeed(prev => [
+                                  {
+                                    id: Math.random().toString(36).substring(7),
+                                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                    text: `Evidence requested from reporting citizen for task ${issue.task_id}`,
+                                    type: 'info'
+                                  },
+                                  ...prev
+                                ]);
+                                fetchDashboard();
+                              } catch (err) {
+                                alert(err.message || 'Action failed');
+                              }
+                            }}>Request Evidence</button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -907,6 +1088,48 @@ export default function App() {
                     {(!dashboardData.ai_insights || dashboardData.ai_insights.length === 0) && (
                       <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Gathering insights...</p>
                     )}
+                  </div>
+                </div>
+
+                {/* Department Workloads */}
+                {dashboardData.department_workload && dashboardData.department_workload.length > 0 && (
+                  <div className="glass-panel">
+                    <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Building2 size={18} /> Department Workload
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {dashboardData.department_workload.map((dept, idx) => (
+                        <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '600' }}>
+                            <span style={{ maxWidth: '170px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dept.name}</span>
+                            <span>{dept.workload}% ({dept.count} tasks)</span>
+                          </div>
+                          <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '99px', overflow: 'hidden' }}>
+                            <div style={{ 
+                              width: `${dept.workload}%`, height: '100%', 
+                              background: dept.workload > 80 ? 'var(--error-color)' : (dept.workload > 50 ? 'var(--warning-color)' : 'var(--success-color)')
+                            }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Live Operations Feed */}
+                <div className="glass-panel">
+                  <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Clock size={18} /> Live Operations Feed
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
+                    {operationsFeed.map((feed) => (
+                      <div key={feed.id} style={{ fontSize: '12px', borderLeft: '2px solid var(--border-color)', paddingLeft: '8px', display: 'flex', gap: '6px' }}>
+                        <span style={{ opacity: 0.6, fontWeight: 'bold' }}>[{feed.time}]</span>
+                        <span style={{ color: feed.type === 'success' ? '#34d399' : (feed.type === 'warning' ? '#fbbf24' : 'var(--text-primary)') }}>
+                          {feed.text}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 

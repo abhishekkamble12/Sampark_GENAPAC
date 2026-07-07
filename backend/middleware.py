@@ -47,15 +47,26 @@ class AuthAndRateLimitMiddleware(BaseHTTPMiddleware):
     """13.2 JWT Auth and 13.3 Rate Limiting, 13.6 RBAC."""
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        # Skip auth for public endpoints and EventSource streams
-        if request.url.path in ("/health", "/auth/login", "/docs", "/openapi.json") or request.url.path.startswith("/chat/stream/") or request.url.path.startswith("/analytics/dashboard/stream"):
+        # Skip auth for public endpoints
+        if request.url.path in ("/health", "/auth/login", "/docs", "/openapi.json"):
+            return await call_next(request)
+            
+        # In local mode, skip auth for EventSource streams
+        if settings.APP_MODE != "production" and (request.url.path.startswith("/chat/stream/") or request.url.path.startswith("/analytics/dashboard/stream")):
             return await call_next(request)
             
         auth_header = request.headers.get("Authorization")
-        if not auth_header or not auth_header.startswith("Bearer "):
-            return JSONResponse({"detail": "Missing or invalid Authorization header"}, status_code=401)
+        token = None
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
             
-        token = auth_header.split(" ")[1]
+        # Fallback to query param or cookie for EventSource streams in production
+        if not token and (request.url.path.startswith("/chat/stream/") or request.url.path.startswith("/analytics/dashboard/stream")):
+            token = request.query_params.get("token") or request.cookies.get("token")
+            
+        if not token:
+            return JSONResponse({"detail": "Missing or invalid Authentication token"}, status_code=401)
+            
         try:
             # 13.2 Validate JWT signature and exp
             payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])

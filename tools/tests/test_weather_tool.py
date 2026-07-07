@@ -10,6 +10,11 @@ from tools.weather_tool import WeatherTool
 
 API_KEY = "test-weather-key"
 
+@pytest.fixture(autouse=True)
+def _patch_app_mode():
+    with patch("backend.config.settings.APP_MODE", "production"):
+        yield
+
 
 def _make_owm_response(hourly_count: int = 2) -> dict:
     hourly = []

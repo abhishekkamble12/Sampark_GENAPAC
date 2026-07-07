@@ -78,6 +78,7 @@ def make_workflow_node(
             "due_date": result["due_date"],
             "status": "open",
             "created_at": now.isoformat(),
+            "estimated_impact": recommendation.get("estimated_impact") or "Reduces response latency"
         }
         
         # 11.3 & 11.6 Firestore Creation & Retry (1 retry after 2s)

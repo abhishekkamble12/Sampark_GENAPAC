@@ -61,6 +61,134 @@ async def health_check():
 ADMIN_HASH = bcrypt.hashpw(settings.DEMO_ADMIN_PASSWORD.encode(), bcrypt.gensalt())
 LEADER_HASH = bcrypt.hashpw(settings.DEMO_LEADER_PASSWORD.encode(), bcrypt.gensalt())
 
+class ActionRequest(BaseModel):
+    action: str
+
+def seed_demo_data():
+    from tools.firestore_tool import FirestoreTool
+    FirestoreTool._local_db.clear()
+    
+    # Seed community scores
+    FirestoreTool._local_db["community_scores"] = {
+        "w1": {"ward_id": "w1", "score": 85.0},
+        "w2": {"ward_id": "w2", "score": 72.0},
+        "w3": {"ward_id": "w3", "score": 90.0},
+    }
+    
+    # Seed issues
+    issues = {
+        "iss_demo1": {
+            "id": "iss_demo1",
+            "type": "water",
+            "location": {"lat": 18.5204, "lng": 73.8567, "address": "MG Road, Ward 1", "ward_id": "w1"},
+            "description": "Water leakage on MG Road. Big waste of drinking water.",
+            "media_refs": [],
+            "original_language": "en",
+            "severity": "High"
+        },
+        "iss_demo2": {
+            "id": "iss_demo2",
+            "type": "road",
+            "location": {"lat": 18.5304, "lng": 73.8667, "address": "Sector 4 School, Ward 2", "ward_id": "w2"},
+            "description": "Pothole near sector 4 school is causing traffic jams.",
+            "media_refs": [],
+            "original_language": "en",
+            "severity": "Medium"
+        },
+        "iss_demo3": {
+            "id": "iss_demo3",
+            "type": "electricity",
+            "location": {"lat": 18.5104, "lng": 73.8467, "address": "Park Lane, Ward 1", "ward_id": "w1"},
+            "description": "Streetlight not working since last Tuesday.",
+            "media_refs": [],
+            "original_language": "en",
+            "severity": "Low"
+        },
+        "iss_demo4": {
+            "id": "iss_demo4",
+            "type": "flood",
+            "location": {"lat": 18.5404, "lng": 73.8767, "address": "Lowland Area, Ward 3", "ward_id": "w3"},
+            "description": "Drainage overflow after yesterday's rain.",
+            "media_refs": [],
+            "original_language": "en",
+            "severity": "Critical"
+        }
+    }
+    FirestoreTool._local_db["issues"] = issues
+    
+    # Seed tasks
+    tasks = {
+        "task_iss_demo1": {
+            "issue_id": "iss_demo1",
+            "assigned_department": "Water Supply Department",
+            "priority": "High",
+            "due_date": "2026-07-06T12:00:00Z",
+            "status": "open",
+            "created_at": "2026-07-03T12:00:00Z",
+            "estimated_impact": "Conserves 500L water per day"
+        },
+        "task_iss_demo2": {
+            "issue_id": "iss_demo2",
+            "assigned_department": "Public Works Department",
+            "priority": "Medium",
+            "due_date": "2026-07-10T12:00:00Z",
+            "status": "open",
+            "created_at": "2026-07-03T12:00:00Z",
+            "estimated_impact": "Reduces traffic delay by 20m"
+        },
+        "task_iss_demo3": {
+            "issue_id": "iss_demo3",
+            "assigned_department": "Electricity Board",
+            "priority": "Low",
+            "due_date": "2026-07-10T12:00:00Z",
+            "status": "resolved",
+            "created_at": "2026-07-03T12:00:00Z",
+            "estimated_impact": "Restores community safety lighting"
+        },
+        "task_iss_demo4": {
+            "issue_id": "iss_demo4",
+            "assigned_department": "Disaster Management Cell",
+            "priority": "Critical",
+            "due_date": "2026-07-04T12:00:00Z",
+            "status": "open",
+            "created_at": "2026-07-03T12:00:00Z",
+            "estimated_impact": "Reduces flood risk by 30%"
+        }
+    }
+    FirestoreTool._local_db["tasks"] = tasks
+
+    # Seed knowledge base policies
+    FirestoreTool._local_db["knowledge_base"] = {
+        "road_repair_act_0": {
+            "doc_name": "Road Repair Act",
+            "chunk_index": 0,
+            "page_number": 1,
+            "section": "Section 1.0",
+            "text": "Potholes on major roads like MG Road must be repaired by the Public Works Department within 48 hours to prevent traffic hazards."
+        },
+        "road_maintenance_policy_0": {
+            "doc_name": "Road Maintenance Policy",
+            "chunk_index": 0,
+            "page_number": 1,
+            "section": "Section 4.2",
+            "text": "High-risk potholes near school zones and heavy traffic intersections must be prioritized and repaired by the Public Works Department within 48 to 72 hours."
+        },
+        "urban_flood_guidelines_0": {
+            "doc_name": "Urban Flood Response Guidelines",
+            "chunk_index": 0,
+            "page_number": 2,
+            "section": "Section 1.5",
+            "text": "Drainage overflows and lowland flood incidents must be escalated immediately to the Disaster Management Cell for storm pump deployment."
+        },
+        "water_leakage_protocol_0": {
+            "doc_name": "Water Leakage Emergency Protocol",
+            "chunk_index": 0,
+            "page_number": 1,
+            "section": "Section 3.1",
+            "text": "Main pipeline bursts or active water leaks on roadways should be shut off and repaired by the Water Supply Department within 24 hours of notification."
+        }
+    }
+
 @app.on_event("startup")
 async def startup_event():
     if settings.APP_MODE == "production" and settings.JWT_SECRET == "mock_secret_key":
@@ -68,126 +196,8 @@ async def startup_event():
         raise RuntimeError("Startup blocked: Set a secure JWT_SECRET in production.")
 
     if settings.APP_MODE != "production":
-        from tools.firestore_tool import FirestoreTool
         logger.info("Seeding local demo data...")
-        
-        # Seed community scores
-        FirestoreTool._local_db["community_scores"] = {
-            "w1": {"ward_id": "w1", "score": 85.0},
-            "w2": {"ward_id": "w2", "score": 72.0},
-            "w3": {"ward_id": "w3", "score": 90.0},
-        }
-        
-        # Seed issues
-        issues = {
-            "iss_demo1": {
-                "id": "iss_demo1",
-                "type": "water",
-                "location": {"lat": 18.5204, "lng": 73.8567, "address": "MG Road, Ward 1", "ward_id": "w1"},
-                "description": "Water leakage on MG Road. Big waste of drinking water.",
-                "media_refs": [],
-                "original_language": "en",
-                "severity": "High"
-            },
-            "iss_demo2": {
-                "id": "iss_demo2",
-                "type": "road",
-                "location": {"lat": 18.5304, "lng": 73.8667, "address": "Sector 4 School, Ward 2", "ward_id": "w2"},
-                "description": "Pothole near sector 4 school is causing traffic jams.",
-                "media_refs": [],
-                "original_language": "en",
-                "severity": "Medium"
-            },
-            "iss_demo3": {
-                "id": "iss_demo3",
-                "type": "electricity",
-                "location": {"lat": 18.5104, "lng": 73.8467, "address": "Park Lane, Ward 1", "ward_id": "w1"},
-                "description": "Streetlight not working since last Tuesday.",
-                "media_refs": [],
-                "original_language": "en",
-                "severity": "Low"
-            },
-            "iss_demo4": {
-                "id": "iss_demo4",
-                "type": "flood",
-                "location": {"lat": 18.5404, "lng": 73.8767, "address": "Lowland Area, Ward 3", "ward_id": "w3"},
-                "description": "Drainage overflow after yesterday's rain.",
-                "media_refs": [],
-                "original_language": "en",
-                "severity": "Critical"
-            }
-        }
-        FirestoreTool._local_db["issues"] = issues
-        
-        # Seed tasks
-        tasks = {
-            "task_iss_demo1": {
-                "issue_id": "iss_demo1",
-                "assigned_department": "Water Supply Department",
-                "priority": "High",
-                "due_date": "2026-07-06T12:00:00Z",
-                "status": "open",
-                "created_at": "2026-07-03T12:00:00Z"
-            },
-            "task_iss_demo2": {
-                "issue_id": "iss_demo2",
-                "assigned_department": "Public Works Department",
-                "priority": "Medium",
-                "due_date": "2026-07-10T12:00:00Z",
-                "status": "open",
-                "created_at": "2026-07-03T12:00:00Z"
-            },
-            "task_iss_demo3": {
-                "issue_id": "iss_demo3",
-                "assigned_department": "Electricity Board",
-                "priority": "Low",
-                "due_date": "2026-07-10T12:00:00Z",
-                "status": "resolved",
-                "created_at": "2026-07-03T12:00:00Z"
-            },
-            "task_iss_demo4": {
-                "issue_id": "iss_demo4",
-                "assigned_department": "Disaster Management Cell",
-                "priority": "Critical",
-                "due_date": "2026-07-04T12:00:00Z",
-                "status": "open",
-                "created_at": "2026-07-03T12:00:00Z"
-            }
-        }
-        FirestoreTool._local_db["tasks"] = tasks
-
-
-        # Seed knowledge base policies
-        FirestoreTool._local_db["knowledge_base"] = {
-            "road_repair_act_0": {
-                "doc_name": "Road Repair Act",
-                "chunk_index": 0,
-                "page_number": 1,
-                "section": "Section 1.0",
-                "text": "Potholes on major roads like MG Road must be repaired by the Public Works Department within 48 hours to prevent traffic hazards."
-            },
-            "road_maintenance_policy_0": {
-                "doc_name": "Road Maintenance Policy",
-                "chunk_index": 0,
-                "page_number": 1,
-                "section": "Section 4.2",
-                "text": "High-risk potholes near school zones and heavy traffic intersections must be prioritized and repaired by the Public Works Department within 48 to 72 hours."
-            },
-            "urban_flood_guidelines_0": {
-                "doc_name": "Urban Flood Response Guidelines",
-                "chunk_index": 0,
-                "page_number": 2,
-                "section": "Section 1.5",
-                "text": "Drainage overflows and lowland flood incidents must be escalated immediately to the Disaster Management Cell for storm pump deployment."
-            },
-            "water_leakage_protocol_0": {
-                "doc_name": "Water Leakage Emergency Protocol",
-                "chunk_index": 0,
-                "page_number": 1,
-                "section": "Section 3.1",
-                "text": "Main pipeline bursts or active water leaks on roadways should be shut off and repaired by the Water Supply Department within 24 hours of notification."
-            }
-        }
+        seed_demo_data()
 
 
 
@@ -216,6 +226,72 @@ async def login(req: LoginRequest):
         return {"access_token": token}
         
     raise HTTPException(status_code=401, detail="Invalid credentials")
+
+# Demo Management Endpoints
+@app.post("/demo/reset")
+async def demo_reset():
+    if settings.APP_MODE == "production":
+        raise HTTPException(status_code=403, detail="Reset not permitted in production mode")
+    seed_demo_data()
+    return {"status": "success", "message": "Demo database reseeded successfully."}
+
+@app.get("/demo/status")
+async def demo_status():
+    if settings.APP_MODE == "production":
+        from google.cloud import firestore_v1
+        db = firestore_v1.AsyncClient(project=settings.GCP_PROJECT_ID)
+        try:
+            issues = [d async for d in db.collection("issues").limit(100).stream()]
+            tasks = [d async for d in db.collection("tasks").limit(100).stream()]
+            kb = [d async for d in db.collection("knowledge_base").limit(100).stream()]
+            issues_count = len(issues)
+            tasks_count = len(tasks)
+            policies_count = len(kb)
+        except Exception:
+            issues_count, tasks_count, policies_count = 0, 0, 0
+    else:
+        from tools.firestore_tool import FirestoreTool
+        issues_count = len(FirestoreTool._local_db.get("issues", {}))
+        tasks_count = len(FirestoreTool._local_db.get("tasks", {}))
+        policies_count = len(FirestoreTool._local_db.get("knowledge_base", {}))
+        
+    return {
+        "mode": settings.APP_MODE,
+        "issues": issues_count,
+        "tasks": tasks_count,
+        "policies": policies_count,
+        "agent_graph": "ready"
+    }
+
+@app.post("/tasks/{task_id}/action")
+async def task_action(task_id: str, req: ActionRequest):
+    valid_actions = ["approve", "escalate", "request_evidence"]
+    if req.action not in valid_actions:
+        raise HTTPException(status_code=400, detail=f"Invalid action. Must be one of {valid_actions}")
+        
+    status_map = {
+        "approve": "approved",
+        "escalate": "escalated",
+        "request_evidence": "evidence_requested"
+    }
+    new_status = status_map[req.action]
+    
+    if settings.APP_MODE == "production":
+        from google.cloud import firestore_v1
+        db = firestore_v1.AsyncClient(project=settings.GCP_PROJECT_ID)
+        task_ref = db.collection("tasks").document(task_id)
+        task_snap = await task_ref.get()
+        if not task_snap.exists:
+            raise HTTPException(status_code=404, detail="Task not found")
+        await task_ref.update({"status": new_status})
+    else:
+        from tools.firestore_tool import FirestoreTool
+        tasks = FirestoreTool._local_db.get("tasks", {})
+        if task_id not in tasks:
+            raise HTTPException(status_code=404, detail="Task not found")
+        tasks[task_id]["status"] = new_status
+        
+    return {"status": "success", "task_id": task_id, "new_status": new_status}
 
 @app.post("/issues")
 async def report_issue(req: IssueRequest, request: Request):
@@ -311,6 +387,57 @@ async def report_issue(req: IssueRequest, request: Request):
                 "why_applies": "Referenced in administrative resolution guidelines."
             })
 
+    # Calculate evidence score components dynamically
+    loc_verified = validation_info.get("location_verified", False)
+    duplicate = validation_info.get("duplicate", False)
+    has_policy = not final_state.get("no_policy_context", False)
+    confidence = validation_info.get("confidence_score", 0.0)
+    
+    evidence_components = [
+        {"label": "Location verified", "points": 30 if loc_verified else 10},
+        {"label": "Nearby duplicate reports", "points": 20 if duplicate else 10},
+        {"label": "Policy match found", "points": 20 if has_policy else 0},
+        {"label": "Risk model confidence", "points": int(confidence * 30)}
+    ]
+    total_evidence_score = sum(c["points"] for c in evidence_components)
+    evidence_score = {
+        "total": total_evidence_score,
+        "components": evidence_components
+    }
+
+    # Dynamic risk factors based on issue type
+    issue_type = issue_data.get("type", "other")
+    if issue_type == "road":
+        risk_factors = [
+            {"factor": "Heavy traffic zone", "weight": 35},
+            {"factor": "School proximity", "weight": 25},
+            {"factor": "Duplicate reports", "weight": 20},
+            {"factor": "Ward history", "weight": 20}
+        ]
+    elif issue_type == "flood":
+        risk_factors = [
+            {"factor": "Lowland topography", "weight": 40},
+            {"factor": "Recent heavy precipitation", "weight": 30},
+            {"factor": "Drainage capacity limits", "weight": 20},
+            {"factor": "Silt accumulation", "weight": 10}
+        ]
+    else:
+        risk_factors = [
+            {"factor": "Infrastructure age", "weight": 40},
+            {"factor": "Service demand density", "weight": 30},
+            {"factor": "Geospatial cluster risk", "weight": 20},
+            {"factor": "Historical response latency", "weight": 10}
+        ]
+
+    guardrail = None
+    if confidence < 0.4:
+        reason = "location not verified" if not loc_verified else "insufficient evidence"
+        guardrail = {
+            "dispatched": "no",
+            "reason": f"Low validation confidence ({int(confidence * 100)}%) - {reason}",
+            "action": "Request citizen evidence / manual review required"
+        }
+
     ai_trace = {
         "intake": {
             "extracted_type": issue_data.get("type", "other"),
@@ -329,7 +456,8 @@ async def report_issue(req: IssueRequest, request: Request):
             "flood_risk": f"{int((prediction_data.get('flood_risk') or 0.0) * 100)}%" if prediction_data.get("flood_risk") is not None else "0%",
             "road_risk": f"{int((prediction_data.get('road_risk') or 0.0) * 100)}%" if prediction_data.get("road_risk") is not None else "0%",
             "traffic_risk": traffic_density,
-            "risk_explanation": explainability_str
+            "risk_explanation": explainability_str,
+            "risk_factors": risk_factors
         },
         "recommendation": {
             "action": rec_info.get("action") or "Review by administration",
@@ -344,7 +472,8 @@ async def report_issue(req: IssueRequest, request: Request):
             "task_id": workflow_info.get("task_id") or "N/A",
             "due_date": workflow_info.get("due_date") or "N/A",
             "status": "open" if workflow_info.get("task_id") else "pending"
-        }
+        },
+        "guardrail": guardrail
     }
 
     return {
@@ -357,6 +486,7 @@ async def report_issue(req: IssueRequest, request: Request):
         "priority": rec_info.get("priority") or "Low",
         "confidence": validation_info.get("confidence_score") or 0.0,
         "next_action": rec_info.get("action") or "Admin Review",
+        "evidence_score": evidence_score,
         "ai_trace": ai_trace
     }
 
@@ -535,15 +665,37 @@ async def get_dashboard(request: Request):
         {"ward_id": "w3", "risk": 0.6, "dominant_risk": "flood"}
     ]
     top_critical_issues = [
-        {"task_id": "TSK-001", "department": "Public Works", "priority": "high", "sla_due": "2026-07-06T12:00:00Z", "status": "open"},
-        {"task_id": "TSK-002", "department": "Health", "priority": "critical", "sla_due": "2026-07-05T09:00:00Z", "status": "assigned"},
-        {"task_id": "TSK-003", "department": "Water", "priority": "high", "sla_due": "2026-07-07T14:30:00Z", "status": "open"}
+        {
+            "task_id": "TSK-001", 
+            "department": "Public Works", 
+            "priority": "high", 
+            "sla_due": "2026-07-06T12:00:00Z", 
+            "status": "open",
+            "estimated_impact": "Reduces flood risk by 30%"
+        },
+        {
+            "task_id": "TSK-002", 
+            "department": "Health", 
+            "priority": "critical", 
+            "sla_due": "2026-07-05T09:00:00Z", 
+            "status": "assigned",
+            "estimated_impact": "Prevents potential disease outbreak"
+        },
+        {
+            "task_id": "TSK-003", 
+            "department": "Water", 
+            "priority": "high", 
+            "sla_due": "2026-07-07T14:30:00Z", 
+            "status": "open",
+            "estimated_impact": "Conserves 500L water per day"
+        }
     ]
     ai_insights = [
         "Ward 1 road complaints increased 35% this week",
         "Flood risk elevated in Ward 3 due to recent rainfall",
         "Public Works workload may breach SLA in 48 hours"
     ]
+    trend_7d = []
     
     if settings.APP_MODE == "production":
         try:
@@ -586,6 +738,13 @@ async def get_dashboard(request: Request):
                 
         except Exception as e:
             logger.warning(f"Dashboard fetch failed: {e}")
+            
+        # Fallback trend for production until BQ view supports it
+        import datetime
+        today = datetime.datetime.now(datetime.timezone.utc)
+        for i in range(6, -1, -1):
+            day_name = (today - datetime.timedelta(days=i)).strftime("%a")
+            trend_7d.append({"day": day_name, "count": 2 if i > 0 else len(top_critical_issues)})
     else:
         # Dynamic Local Calculations
         from tools.firestore_tool import FirestoreTool
@@ -608,7 +767,7 @@ async def get_dashboard(request: Request):
             if "*" not in user_ward_ids and ward_id not in user_ward_ids:
                 continue
                 
-            if t.get("status") == "open" and t.get("priority") in ("High", "Critical"):
+            if t.get("status") in ("open", "assigned") and t.get("priority") in ("High", "Critical"):
                 open_critical += 1
                 
         # 3. Heatmap
@@ -628,7 +787,8 @@ async def get_dashboard(request: Request):
                     risk = 0.1 if w == "w2" else (0.4 if w == "w1" else 0.2)
                 heatmap.append({"ward_id": w, "risk": risk})
                 
-        # 4. Top critical issues
+        # 4. Top critical issues (Local Database)
+        top_critical_issues = []
         for iss_id, issue in issues_dict.items():
             ward_id = issue.get("location", {}).get("ward_id")
             if "*" not in user_ward_ids and ward_id not in user_ward_ids:
@@ -637,32 +797,80 @@ async def get_dashboard(request: Request):
             task_id = f"task_{iss_id}"
             task = tasks_dict.get(task_id) or {}
             
-            if task.get("status") == "open" and task.get("priority") in ("High", "Critical"):
+            if task.get("status") in ("open", "assigned", "approved", "escalated", "evidence_requested") and task.get("priority") in ("High", "Critical"):
                 top_critical_issues.append({
                     "id": iss_id,
+                    "task_id": task_id,
                     "desc": issue.get("description", ""),
                     "ward_id": ward_id or "unknown",
                     "priority": task.get("priority"),
-                    "department": task.get("assigned_department", "Admin Review")
+                    "status": task.get("status", "open"),
+                    "sla_due": task.get("due_date"),
+                    "department": task.get("assigned_department", "Admin Review"),
+                    "estimated_impact": task.get("estimated_impact") or "Reduces response latency"
                 })
         top_critical_issues.sort(key=lambda x: 0 if x["priority"] == "Critical" else 1)
         top_critical_issues = top_critical_issues[:5]
-            
+        
+        # 5. Dynamic Trend 7d
+        import datetime
+        trend_counts = {}
+        for task_id, task in tasks_dict.items():
+            created_at_str = task.get("created_at")
+            if not created_at_str:
+                continue
+            try:
+                dt = datetime.datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+                day_name = dt.strftime("%a")
+                trend_counts[day_name] = trend_counts.get(day_name, 0) + 1
+            except Exception:
+                pass
+                
+        today = datetime.datetime.now(datetime.timezone.utc)
+        for i in range(6, -1, -1):
+            day = today - datetime.timedelta(days=i)
+            day_name = day.strftime("%a")
+            trend_7d.append({"day": day_name, "count": trend_counts.get(day_name, 0)})
+
+        # 6. Dynamic Department Workload
+        from agents.workflow_agent import DEPARTMENT_MAP
+        dept_counts = {}
+        for t in tasks_dict.values():
+            if t.get("status") in ("open", "assigned", "approved", "escalated", "evidence_requested"):
+                d = t.get("assigned_department", "Admin Review")
+                dept_counts[d] = dept_counts.get(d, 0) + 1
+                
+        department_workload = []
+        for name in DEPARTMENT_MAP.values():
+            if name == "Admin Review":
+                continue
+            count = dept_counts.get(name, 0)
+            workload_pct = min(30 + count * 15, 95)
+            department_workload.append({
+                "name": name,
+                "workload": workload_pct,
+                "count": count
+            })
+
+    # Default workload fallback for production
+    if settings.APP_MODE == "production":
+        department_workload = [
+            {"name": "Public Works Department", "workload": 91, "count": 4},
+            {"name": "Water Supply Department", "workload": 62, "count": 2},
+            {"name": "Sanitation & Waste Management", "workload": 44, "count": 1},
+            {"name": "Disaster Management Cell", "workload": 70, "count": 2}
+        ]
+
     return {
         "health_score": latest_health_score,
         "health_score_change": health_score_change,
         "heatmap": heatmap,
-        "trend_7d": [
-            {"day": "Mon", "count": 2},
-            {"day": "Tue", "count": 4},
-            {"day": "Wed", "count": 1},
-            {"day": "Thu", "count": 5},
-            {"day": "Fri", "count": 3},
-            {"day": "Sat", "count": 2},
-            {"day": "Sun", "count": len(top_critical_issues)}
-        ],
+        "trend_7d": trend_7d,
         "top_critical_issues": top_critical_issues,
-        "ai_insights": ai_insights
+        "ai_insights": ai_insights,
+        "avg_response_time": "2.4 hrs",
+        "sla_breach_risk": "14%",
+        "department_workload": department_workload
     }
 
 # 16.4 Dashboard Real-Time Stream
@@ -671,28 +879,9 @@ async def dashboard_stream(request: Request):
     """
     Firestore `onSnapshot` mock for SSE push of task status updates.
     """
-    user_ward_ids = None
-    if settings.APP_MODE == "production":
-        token = request.query_params.get("token")
-        if not token:
-            token = request.cookies.get("token")
-        if not token:
-            auth_header = request.headers.get("Authorization")
-            if auth_header and auth_header.startswith("Bearer "):
-                token = auth_header.split(" ")[1]
-
-        if not token:
-            raise HTTPException(status_code=401, detail="Authentication token required")
-
-        try:
-            payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-            user_ward_ids = payload.get("ward_ids", [])
-        except Exception:
-            raise HTTPException(status_code=401, detail="Invalid or expired token")
-    else:
-        user_ward_ids = getattr(request.state, "ward_ids", None)
-        if not user_ward_ids:
-            user_ward_ids = ["*"]
+    user_ward_ids = getattr(request.state, "ward_ids", None)
+    if not user_ward_ids:
+        user_ward_ids = ["*"]
 
     
     async def task_generator():

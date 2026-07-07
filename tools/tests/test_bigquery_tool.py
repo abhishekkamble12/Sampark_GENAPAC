@@ -23,10 +23,18 @@ from tools.bigquery_tool import BigQueryTool
 PROJECT = "test-project"
 DATASET = "sampark_analytics"
 
+@pytest.fixture(autouse=True)
+def _patch_app_mode():
+    with patch("backend.config.settings.APP_MODE", "production"):
+        yield
+
 
 def _make_tool(mock_client: MagicMock) -> BigQueryTool:
     """Create a BigQueryTool whose internal _client is replaced with a mock."""
-    with patch("tools.bigquery_tool.bigquery.Client", return_value=mock_client):
+    with (
+        patch("tools.bigquery_tool.bigquery.Client", return_value=mock_client),
+        patch("backend.config.settings.APP_MODE", "production")
+    ):
         return BigQueryTool(project_id=PROJECT, dataset=DATASET)
 
 
