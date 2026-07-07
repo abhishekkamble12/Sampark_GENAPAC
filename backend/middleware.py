@@ -47,8 +47,8 @@ class AuthAndRateLimitMiddleware(BaseHTTPMiddleware):
     """13.2 JWT Auth and 13.3 Rate Limiting, 13.6 RBAC."""
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        # Skip auth for public endpoints
-        if request.url.path in ("/health", "/auth/login", "/docs", "/openapi.json"):
+        # Skip auth for OPTIONS requests (CORS preflight) and public endpoints
+        if request.method == "OPTIONS" or request.url.path in ("/health", "/auth/login", "/docs", "/openapi.json"):
             return await call_next(request)
             
         # In local mode, skip auth for EventSource streams
