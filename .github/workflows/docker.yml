@@ -3,7 +3,8 @@ name: Docker — Build & Push
 on:
   push:
     branches:
-      - main
+      
+      - product
       - version3
     tags:
       - "v*.*.*"
