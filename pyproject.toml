@@ -11,26 +11,26 @@ requires-python = ">=3.12"
 license = { text = "MIT" }
 
 dependencies = [
-    "fastapi",
-    "uvicorn",
-    "pydantic",
-    "pydantic-settings",
-    "pyjwt",
-    "bcrypt",
-    "langgraph",
-    "langchain",
-    "google-cloud-firestore",
-    "google-cloud-bigquery",
-    "google-cloud-pubsub",
-    "google-cloud-storage",
-    "google-cloud-aiplatform",
-    "google-cloud-speech",
-    "sendgrid",
-    "twilio",
-    "httpx",
-    "pypdf",
-    "python-multipart",
-    "google-generativeai"
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "pyjwt>=2.8.0",
+    "bcrypt>=4.0.0",
+    "langgraph>=0.0.20",
+    "langchain>=0.1.0",
+    "google-cloud-firestore>=2.13.0",
+    "google-cloud-bigquery>=3.12.0",
+    "google-cloud-pubsub>=2.18.0",
+    "google-cloud-storage>=2.10.0",
+    "google-cloud-aiplatform>=1.35.0",
+    "google-cloud-speech>=2.21.0",
+    "sendgrid>=6.10.0",
+    "twilio>=8.10.0",
+    "httpx>=0.25.0",
+    "pypdf>=4.0.0",
+    "python-multipart>=0.0.7",
+    "google-generativeai>=0.3.0"
 ]
 [project.optional-dependencies]
 dev = [
