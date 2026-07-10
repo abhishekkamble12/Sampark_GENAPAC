@@ -3,7 +3,6 @@
 Sampark AI turns citizen complaints into explainable, policy-grounded government action using multi-agent AI, RAG, risk prediction, and live task routing.
 
 > *Cities do not need another complaint form. They need a decision intelligence layer that validates reports, predicts risk, cites policy, routes tasks, and helps officers act faster.*
-
 ---
 
 ## 🏗️ System Architecture
